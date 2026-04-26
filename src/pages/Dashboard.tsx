@@ -2,14 +2,11 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, UserX, Building2, Shield } from "lucide-react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
-  Cell,
 } from "recharts";
 import { Panel } from "@/components/aksel/Panel";
 import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";
