@@ -191,7 +191,31 @@ const Dashboard = () => {
           </div>
         </Panel>
 
-        {/* 2. Saksstatus – klikkbar */}
+        {/* 2. Venteoversikt – mellom kategori og status */}
+        <Panel title="Venteoversikt" description="Flaskehalser i saksflyten">
+          <div className="space-y-3">
+            <WaitTile
+              icon={UserX}
+              label="Ikke tildelte saker"
+              value={waiting.unassigned}
+              tone="error"
+            />
+            <WaitTile
+              icon={Building2}
+              label="Venter på administrasjon"
+              value={waiting.admin}
+              tone="warning"
+            />
+            <WaitTile
+              icon={Shield}
+              label="Venter på politi"
+              value={waiting.politi}
+              tone="alt"
+            />
+          </div>
+        </Panel>
+
+        {/* 3. Saksstatus – klikkbar */}
         <Panel
           title="Saksstatus"
           description="Klikk en status for å se saker i listen under"
@@ -236,32 +260,8 @@ const Dashboard = () => {
         </Panel>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
-        {/* 3. Venteoversikt */}
-        <Panel title="Venteoversikt" description="Flaskehalser i saksflyten">
-          <div className="space-y-3">
-            <WaitTile
-              icon={UserX}
-              label="Ikke tildelte saker"
-              value={waiting.unassigned}
-              tone="error"
-            />
-            <WaitTile
-              icon={Building2}
-              label="Venter på administrasjon"
-              value={waiting.admin}
-              tone="warning"
-            />
-            <WaitTile
-              icon={Shield}
-              label="Venter på politi"
-              value={waiting.politi}
-              tone="alt"
-            />
-          </div>
-        </Panel>
-
-        {/* 4. Saker med valgt status */}
+      {/* 4. Saker med valgt status – full bredde */}
+      <div className="mt-5">
         <Panel
           title={
             selectedStatus
@@ -273,7 +273,6 @@ const Dashboard = () => {
               ? `${filteredCases.length} saker`
               : "Velg en status i Saksstatus-flisen for å se saker her"
           }
-          className="xl:col-span-2"
           contentClassName="p-0"
           actions={
             selectedStatus ? (
