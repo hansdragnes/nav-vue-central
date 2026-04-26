@@ -21,20 +21,24 @@ export const CASE_STATUSES: CaseStatus[] = [
 ];
 
 export type CaseCategory =
-  | "Dagpenger"
-  | "AAP"
-  | "Sykepenger"
-  | "Foreldrepenger"
-  | "Bostøtte"
-  | "Uføretrygd";
+  | "Behandler"
+  | "Arbeid"
+  | "Samliv"
+  | "Utland"
+  | "Identitet"
+  | "Tiltak"
+  | "Dokumentfalsk"
+  | "Annet";
 
 export const CASE_CATEGORIES: CaseCategory[] = [
-  "Dagpenger",
-  "AAP",
-  "Sykepenger",
-  "Foreldrepenger",
-  "Bostøtte",
-  "Uføretrygd",
+  "Behandler",
+  "Arbeid",
+  "Samliv",
+  "Utland",
+  "Identitet",
+  "Tiltak",
+  "Dokumentfalsk",
+  "Annet",
 ];
 
 export interface Employee {
