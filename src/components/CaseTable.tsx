@@ -6,7 +6,7 @@ function statusTone(status: CaseRow["status"]) {
   if (status === "Ny") return "info" as const;
   if (status === "Under behandling") return "info" as const;
   if (status.startsWith("Venter")) return "warning" as const;
-  if (status === "Til godkjenning") return "alt" as const;
+  if (status === "Henlagt") return "alt" as const;
   if (status === "Ferdig") return "success" as const;
   return "neutral" as const;
 }
