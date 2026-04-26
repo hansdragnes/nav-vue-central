@@ -260,11 +260,46 @@ const Dashboard = () => {
           </div>
         </Panel>
 
-        {/* 4. Ansattoversikt */}
+        {/* 4. Saker med valgt status */}
+        <Panel
+          title={
+            selectedStatus
+              ? `Saker med status: ${selectedStatus}`
+              : "Saker med status"
+          }
+          description={
+            selectedStatus
+              ? `${filteredCases.length} saker`
+              : "Velg en status i Saksstatus-flisen for å se saker her"
+          }
+          className="xl:col-span-2"
+          contentClassName="p-0"
+          actions={
+            selectedStatus ? (
+              <button
+                onClick={() => setSelectedStatus(null)}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Lukk
+              </button>
+            ) : null
+          }
+        >
+          {selectedStatus ? (
+            <CaseTable rows={filteredCases} maxHeight="420px" />
+          ) : (
+            <div className="flex h-48 items-center justify-center px-5 text-sm text-muted-foreground">
+              Ingen status valgt
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      {/* Ansattoversikt – nederst, full bredde */}
+      <div className="mt-5">
         <Panel
           title="Ansattoversikt"
           description="Klikk en ansatt for å åpne deres saker"
-          className="xl:col-span-2"
           contentClassName="p-0"
           actions={
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -301,27 +336,6 @@ const Dashboard = () => {
           </table>
         </Panel>
       </div>
-
-      {/* Saksliste – kun hvis status er valgt */}
-      {selectedStatus && (
-        <div className="mt-5">
-          <Panel
-            title={`Saker med status: ${selectedStatus}`}
-            description={`${filteredCases.length} saker`}
-            contentClassName="p-0"
-            actions={
-              <button
-                onClick={() => setSelectedStatus(null)}
-                className="text-sm font-semibold text-primary hover:underline"
-              >
-                Lukk
-              </button>
-            }
-          >
-            <CaseTable rows={filteredCases} maxHeight="420px" />
-          </Panel>
-        </div>
-      )}
     </div>
   );
 };
