@@ -120,31 +120,62 @@ const Dashboard = () => {
           title="Saker per kategori"
           description="Fordeling av portefølje på sakstype"
         >
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid horizontal={false} stroke="hsl(var(--border))" />
-                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis
-                  type="category"
-                  dataKey="category"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  width={110}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 4,
-                    fontSize: 12,
-                  }}
-                />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-6">
+            <div className="h-64 w-64 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    dataKey="count"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={100}
+                    paddingAngle={1}
+                    stroke="hsl(var(--card))"
+                    strokeWidth={2}
+                  >
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={categoryColors[i % categoryColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                    formatter={(value: number, name: string) => [`${value} saker`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="flex-1 space-y-2">
+              {categoryData.map((c, i) => {
+                const total = categoryData.reduce((sum, d) => sum + d.count, 0);
+                const pct = total > 0 ? Math.round((c.count / total) * 100) : 0;
+                return (
+                  <li
+                    key={c.category}
+                    className="flex items-center justify-between gap-3 border-b border-border py-1.5 last:border-0"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span
+                        className="h-3 w-3 rounded-sm"
+                        style={{ background: categoryColors[i % categoryColors.length] }}
+                      />
+                      <span className="text-sm font-medium text-foreground">{c.category}</span>
+                    </span>
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      <span className="font-semibold text-foreground">{c.count}</span>
+                      <span className="ml-2 text-xs">{pct}%</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </Panel>
 
