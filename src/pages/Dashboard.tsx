@@ -1,141 +1,142 @@
-import { useState } from "react";
-import {
-  Briefcase,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  TrendingUp,
-  ArrowRight,
-} from "lucide-react";
-import { KpiCard } from "@/components/aksel/KpiCard";
-import { Panel } from "@/components/aksel/Panel";
-import { FilterBar } from "@/components/aksel/FilterBar";
-import { Tag } from "@/components/aksel/Tag";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Users, UserX, Building2, Shield } from "lucide-react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
 } from "recharts";
+import { Panel } from "@/components/aksel/Panel";
+import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";
+import { CaseTable } from "@/components/CaseTable";
+import { cn } from "@/lib/utils";
+import {
+  CASE_CATEGORIES,
+  CASE_STATUSES,
+  CASES,
+  EMPLOYEES,
+  type CaseStatus,
+  ACTIVE_STATUSES,
+  type CaseRow,
+} from "@/data/cases";
 
-const productionData = [
-  { day: "Man", behandlet: 142, mottatt: 158 },
-  { day: "Tir", behandlet: 168, mottatt: 151 },
-  { day: "Ons", behandlet: 175, mottatt: 162 },
-  { day: "Tor", behandlet: 159, mottatt: 170 },
-  { day: "Fre", behandlet: 188, mottatt: 144 },
-  { day: "Lør", behandlet: 42, mottatt: 22 },
-  { day: "Søn", behandlet: 18, mottatt: 12 },
-];
-
-const statusData = [
-  { name: "Ny", value: 312, color: "hsl(211 100% 39%)" },
-  { name: "Under behandling", value: 814, color: "hsl(211 100% 60%)" },
-  { name: "Venter", value: 286, color: "hsl(35 100% 47%)" },
-  { name: "Ferdig (uke)", value: 642, color: "hsl(145 63% 28%)" },
-];
-
-const upcomingDeadlines = [
-  { id: "K-2024-10921", type: "Bostøtte – etterkontroll", assignee: "Per H.", days: 1, risk: "Høy" },
-  { id: "K-2024-11042", type: "AAP – revurdering", assignee: "Marte K.", days: 2, risk: "Middels" },
-  { id: "K-2024-11108", type: "Dagpenger – kontroll", assignee: "Lars Ø.", days: 3, risk: "Lav" },
-  { id: "K-2024-11220", type: "Sykepenger – etterkontroll", assignee: "Anna B.", days: 3, risk: "Middels" },
-  { id: "K-2024-11305", type: "Foreldrepenger", assignee: "Kim T.", days: 4, risk: "Lav" },
-];
-
-const overdueAlerts = [
-  { id: "K-2024-09812", type: "AAP", days: 6, owner: "Eva R." },
-  { id: "K-2024-09844", type: "Dagpenger", days: 4, owner: "Jonas L." },
-  { id: "K-2024-09901", type: "Bostøtte", days: 2, owner: "Mira S." },
-];
+const statusColor: Record<CaseStatus, string> = {
+  "Ny": "hsl(211 100% 39%)",
+  "Under behandling": "hsl(211 100% 60%)",
+  "Venter på bruker": "hsl(35 100% 47%)",
+  "Venter på administrasjon": "hsl(28 90% 55%)",
+  "Venter på politi": "hsl(280 50% 55%)",
+  "Til godkjenning": "hsl(213 67% 30%)",
+  "Ferdig": "hsl(145 63% 28%)",
+};
 
 const Dashboard = () => {
-  const [scope, setScope] = useState("Avdeling");
-  const [period, setPeriod] = useState("Denne uka");
+  const navigate = useNavigate();
+  const [scope, setScope] = useState<Scope>("Min avdeling");
+  const [period, setPeriod] = useState<Period>("Ingen");
+  const [selectedStatus, setSelectedStatus] = useState<CaseStatus | null>(null);
+
+  // Filtrering på nivå/periode (mock — dataen er den samme, men vi later som)
+  const scopedCases = useMemo(() => {
+    // Forenklet: "Min enhet" viser et utsnitt
+    if (scope === "Min enhet") {
+      const unitEmployees = EMPLOYEES.filter((e) => e.unit === "Kontroll Øst").map((e) => e.id);
+      return CASES.filter(
+        (c) => c.employeeId === null || unitEmployees.includes(c.employeeId),
+      );
+    }
+    return CASES;
+  }, [scope]);
+
+  const periodCases = useMemo(() => {
+    if (period === "Ingen") return scopedCases;
+    const cutoff =
+      period === "Måned hittil" ? 25 : period === "Inneværende tertial" ? 90 : 200;
+    return scopedCases.filter((c) => c.ageDays <= cutoff);
+  }, [scopedCases, period]);
+
+  const categoryData = useMemo(
+    () =>
+      CASE_CATEGORIES.map((cat) => ({
+        category: cat,
+        count: periodCases.filter((c) => c.category === cat).length,
+      })),
+    [periodCases],
+  );
+
+  const statusData = useMemo(
+    () =>
+      CASE_STATUSES.map((s) => ({
+        status: s,
+        count: periodCases.filter((c) => c.status === s).length,
+      })),
+    [periodCases],
+  );
+
+  const waiting = useMemo(() => {
+    return {
+      unassigned: periodCases.filter((c) => c.employeeId === null && c.status !== "Ferdig").length,
+      admin: periodCases.filter((c) => c.status === "Venter på administrasjon").length,
+      politi: periodCases.filter((c) => c.status === "Venter på politi").length,
+    };
+  }, [periodCases]);
+
+  const employeeRows = useMemo(() => {
+    const unitEmployees =
+      scope === "Min enhet"
+        ? EMPLOYEES.filter((e) => e.unit === "Kontroll Øst")
+        : EMPLOYEES;
+    return unitEmployees.map((emp) => {
+      const own = periodCases.filter((c) => c.employeeId === emp.id);
+      return {
+        id: emp.id,
+        name: emp.name,
+        assigned: own.length,
+        active: own.filter((c) => ACTIVE_STATUSES.includes(c.status)).length,
+        completed: own.filter((c) => c.status === "Ferdig").length,
+      };
+    });
+  }, [periodCases, scope]);
+
+  const filteredCases: CaseRow[] = useMemo(() => {
+    if (!selectedStatus) return [];
+    return periodCases.filter((c) => c.status === selectedStatus);
+  }, [periodCases, selectedStatus]);
 
   return (
     <div>
-      <FilterBar
-        scopes={["Individ", "Gruppe", "Enhet", "Avdeling"]}
-        active={scope}
-        onChange={setScope}
-        activePeriod={period}
+      <ScopeBar
+        scope={scope}
+        onScopeChange={setScope}
+        period={period}
         onPeriodChange={setPeriod}
       />
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <KpiCard
-          label="Total produksjon"
-          value="1 892"
-          delta={{ value: "+8,4 %", direction: "up", positive: true }}
-          hint="Mot forrige uke"
-          icon={TrendingUp}
-          tone="success"
-        />
-        <KpiCard
-          label="Saker i portefølje"
-          value="2 454"
-          delta={{ value: "+112", direction: "up", positive: false }}
-          hint="Netto endring"
-          icon={Briefcase}
-        />
-        <KpiCard
-          label="Restanser"
-          value="318"
-          delta={{ value: "+24", direction: "up", positive: false }}
-          hint="Eldre enn 30 dager"
-          icon={AlertTriangle}
-          tone="error"
-        />
-        <KpiCard
-          label="Frister neste 7 dager"
-          value="146"
-          delta={{ value: "12 over frist", direction: "up", positive: false }}
-          hint="Krever prioritering"
-          icon={Clock}
-          tone="warning"
-        />
-        <KpiCard
-          label="Ferdigstilt denne uken"
-          value="642"
-          delta={{ value: "+5,2 %", direction: "up", positive: true }}
-          hint="Snitt 128/dag"
-          icon={CheckCircle2}
-          tone="success"
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        {/* 1. Saker per kategori */}
         <Panel
-          className="xl:col-span-2"
-          title="Produksjon vs. innstrømning"
-          description="Behandlede saker sammenlignet med mottatte saker per dag"
-          actions={
-            <div className="flex items-center gap-3 text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Behandlet
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm bg-warning" /> Mottatt
-              </span>
-            </div>
-          }
+          title="Saker per kategori"
+          description="Fordeling av portefølje på sakstype"
         >
-          <div className="h-72">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={productionData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <BarChart data={categoryData} layout="vertical" margin={{ left: 10 }}>
+                <CartesianGrid horizontal={false} stroke="hsl(var(--border))" />
+                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis
+                  type="category"
+                  dataKey="category"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  width={110}
+                />
                 <Tooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
@@ -144,116 +145,174 @@ const Dashboard = () => {
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="behandlet" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="mottatt" fill="hsl(var(--warning))" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Panel>
 
-        <Panel title="Saksstatus" description="Fordeling av portefølje">
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                  {statusData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 4,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="square"
-                  iconSize={10}
-                  formatter={(v) => <span className="text-xs text-foreground">{v}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        {/* 2. Saksstatus – klikkbar */}
+        <Panel
+          title="Saksstatus"
+          description="Klikk en status for å se saker i listen under"
+          actions={
+            selectedStatus ? (
+              <button
+                onClick={() => setSelectedStatus(null)}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Nullstill valg
+              </button>
+            ) : null
+          }
+        >
+          <ul className="divide-y divide-border">
+            {statusData.map((s) => {
+              const isActive = selectedStatus === s.status;
+              return (
+                <li key={s.status}>
+                  <button
+                    onClick={() => setSelectedStatus(isActive ? null : s.status)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 px-1 py-2.5 text-left transition-colors hover:bg-surface-subtle",
+                      isActive && "bg-secondary",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span
+                        className="h-3 w-3 rounded-sm"
+                        style={{ background: statusColor[s.status] }}
+                      />
+                      <span className="text-sm font-medium text-foreground">{s.status}</span>
+                    </span>
+                    <span className="text-base font-semibold tabular-nums text-foreground">
+                      {s.count}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </Panel>
       </div>
 
-      {/* Lists */}
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+        {/* 3. Venteoversikt */}
+        <Panel title="Venteoversikt" description="Flaskehalser i saksflyten">
+          <div className="space-y-3">
+            <WaitTile
+              icon={UserX}
+              label="Ikke tildelte saker"
+              value={waiting.unassigned}
+              tone="error"
+            />
+            <WaitTile
+              icon={Building2}
+              label="Venter på administrasjon"
+              value={waiting.admin}
+              tone="warning"
+            />
+            <WaitTile
+              icon={Shield}
+              label="Venter på politi"
+              value={waiting.politi}
+              tone="alt"
+            />
+          </div>
+        </Panel>
+
+        {/* 4. Ansattoversikt */}
         <Panel
-          title="Kommende frister"
-          description="Neste 7 dager – sortert etter risiko og frist"
-          actions={
-            <button className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover">
-              Se alle <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          }
+          title="Ansattoversikt"
+          description="Klikk en ansatt for å åpne deres saker"
+          className="xl:col-span-2"
           contentClassName="p-0"
+          actions={
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              {employeeRows.length} ansatte
+            </span>
+          }
         >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-5 py-2.5 text-left font-semibold">Saksnr.</th>
-                <th className="px-5 py-2.5 text-left font-semibold">Type</th>
-                <th className="px-5 py-2.5 text-left font-semibold">Saksbehandler</th>
-                <th className="px-5 py-2.5 text-left font-semibold">Risiko</th>
-                <th className="px-5 py-2.5 text-right font-semibold">Frist</th>
+                <th className="px-5 py-2.5 text-left font-semibold">Ansatt</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Tildelte</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Aktive</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Fullførte</th>
               </tr>
             </thead>
             <tbody>
-              {upcomingDeadlines.map((row) => (
-                <tr key={row.id} className="border-b border-border last:border-0 hover:bg-surface-subtle">
-                  <td className="px-5 py-3 font-mono text-xs text-foreground">{row.id}</td>
-                  <td className="px-5 py-3 text-foreground">{row.type}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{row.assignee}</td>
-                  <td className="px-5 py-3">
-                    <Tag tone={row.risk === "Høy" ? "error" : row.risk === "Middels" ? "warning" : "neutral"}>
-                      {row.risk}
-                    </Tag>
-                  </td>
-                  <td className="px-5 py-3 text-right font-semibold text-foreground">
-                    {row.days === 1 ? "I morgen" : `Om ${row.days} dager`}
+              {employeeRows.map((emp) => (
+                <tr
+                  key={emp.id}
+                  onClick={() => navigate(`/saksoversikt?ansatt=${emp.id}`)}
+                  className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-subtle"
+                >
+                  <td className="px-5 py-3 font-medium text-foreground">{emp.name}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-foreground">{emp.assigned}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-foreground">{emp.active}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">
+                    {emp.completed}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Panel>
-
-        <Panel
-          title="Saker over frist"
-          description="Krever umiddelbar handling"
-          actions={<Tag tone="error">{overdueAlerts.length} saker</Tag>}
-        >
-          <ul className="space-y-3">
-            {overdueAlerts.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between gap-4 rounded-sm border-l-4 border-destructive bg-destructive-surface/50 p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  <div>
-                    <div className="font-mono text-xs text-muted-foreground">{a.id}</div>
-                    <div className="text-sm font-semibold text-foreground">{a.type}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-destructive">{a.days} dager over frist</div>
-                  <div className="text-xs text-muted-foreground">Eier: {a.owner}</div>
-                </div>
-                <button className="rounded-sm bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover">
-                  Tildel på nytt
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Panel>
       </div>
+
+      {/* Saksliste – kun hvis status er valgt */}
+      {selectedStatus && (
+        <div className="mt-5">
+          <Panel
+            title={`Saker med status: ${selectedStatus}`}
+            description={`${filteredCases.length} saker`}
+            contentClassName="p-0"
+            actions={
+              <button
+                onClick={() => setSelectedStatus(null)}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Lukk
+              </button>
+            }
+          >
+            <CaseTable rows={filteredCases} maxHeight="420px" />
+          </Panel>
+        </div>
+      )}
     </div>
   );
 };
+
+interface WaitTileProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  tone: "error" | "warning" | "alt";
+}
+
+const toneClasses: Record<WaitTileProps["tone"], string> = {
+  error: "border-l-destructive bg-destructive-surface/40 text-destructive",
+  warning: "border-l-warning bg-warning-surface/40 text-[hsl(28_80%_28%)]",
+  alt: "border-l-[hsl(280_50%_55%)] bg-[hsl(280_60%_96%)] text-[hsl(280_50%_30%)]",
+};
+
+const WaitTile = ({ icon: Icon, label, value, tone }: WaitTileProps) => (
+  <div
+    className={cn(
+      "flex items-center justify-between gap-3 rounded-sm border border-border border-l-4 p-3",
+      toneClasses[tone],
+    )}
+  >
+    <div className="flex items-center gap-3">
+      <Icon className="h-5 w-5" />
+      <span className="text-sm font-semibold text-foreground">{label}</span>
+    </div>
+    <span className="text-2xl font-bold tabular-nums text-foreground">{value}</span>
+  </div>
+);
 
 export default Dashboard;
