@@ -32,6 +32,17 @@ const statusColor: Record<CaseStatus, string> = {
   "Ferdig": "hsl(145 63% 28%)",
 };
 
+const categoryColors = [
+  "hsl(211 100% 39%)",
+  "hsl(145 63% 35%)",
+  "hsl(35 100% 47%)",
+  "hsl(280 50% 55%)",
+  "hsl(213 67% 30%)",
+  "hsl(0 70% 50%)",
+  "hsl(190 70% 40%)",
+  "hsl(45 90% 50%)",
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [scope, setScope] = useState<Scope>("Min avdeling");
