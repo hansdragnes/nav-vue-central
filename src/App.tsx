@@ -5,11 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
 import Dashboard from "./pages/Dashboard";
-import Saksflyt from "./pages/Saksflyt";
-import Fordeling from "./pages/Fordeling";
-import Oppfolging from "./pages/Oppfolging";
-import Varsler from "./pages/Varsler";
-import Statistikk from "./pages/Statistikk";
+import Saksoversikt from "./pages/Saksoversikt";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -23,11 +19,7 @@ const App = () => (
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/saksflyt" element={<Saksflyt />} />
-            <Route path="/fordeling" element={<Fordeling />} />
-            <Route path="/oppfolging" element={<Oppfolging />} />
-            <Route path="/varsler" element={<Varsler />} />
-            <Route path="/statistikk" element={<Statistikk />} />
+            <Route path="/saksoversikt" element={<Saksoversikt />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
