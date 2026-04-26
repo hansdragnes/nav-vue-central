@@ -5,18 +5,18 @@ export type CaseStatus =
   | "Ny"
   | "Under behandling"
   | "Venter på bruker"
-  | "Venter på administrasjon"
+  | "Venter på forvaltning"
   | "Venter på politi"
-  | "Til godkjenning"
+  | "Henlagt"
   | "Ferdig";
 
 export const CASE_STATUSES: CaseStatus[] = [
   "Ny",
   "Under behandling",
   "Venter på bruker",
-  "Venter på administrasjon",
+  "Venter på forvaltning",
   "Venter på politi",
-  "Til godkjenning",
+  "Henlagt",
   "Ferdig",
 ];
 
@@ -86,9 +86,9 @@ function generateCases(): CaseRow[] {
     if (statusRoll < 0.12) status = "Ny";
     else if (statusRoll < 0.45) status = "Under behandling";
     else if (statusRoll < 0.55) status = "Venter på bruker";
-    else if (statusRoll < 0.65) status = "Venter på administrasjon";
+    else if (statusRoll < 0.65) status = "Venter på forvaltning";
     else if (statusRoll < 0.72) status = "Venter på politi";
-    else if (statusRoll < 0.8) status = "Til godkjenning";
+    else if (statusRoll < 0.8) status = "Henlagt";
     else status = "Ferdig";
 
     // Ny + ~10 % øvrige er ikke tildelt
@@ -118,7 +118,7 @@ export const ACTIVE_STATUSES: CaseStatus[] = [
   "Ny",
   "Under behandling",
   "Venter på bruker",
-  "Venter på administrasjon",
+  "Venter på forvaltning",
   "Venter på politi",
-  "Til godkjenning",
+  "Henlagt",
 ];

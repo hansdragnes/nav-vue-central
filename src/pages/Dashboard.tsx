@@ -26,9 +26,9 @@ const statusColor: Record<CaseStatus, string> = {
   "Ny": "hsl(211 100% 39%)",
   "Under behandling": "hsl(211 100% 60%)",
   "Venter på bruker": "hsl(35 100% 47%)",
-  "Venter på administrasjon": "hsl(28 90% 55%)",
+  "Venter på forvaltning": "hsl(28 90% 55%)",
   "Venter på politi": "hsl(280 50% 55%)",
-  "Til godkjenning": "hsl(213 67% 30%)",
+  "Henlagt": "hsl(213 67% 30%)",
   "Ferdig": "hsl(145 63% 28%)",
 };
 
@@ -89,7 +89,7 @@ const Dashboard = () => {
   const waiting = useMemo(() => {
     return {
       unassigned: periodCases.filter((c) => c.employeeId === null && c.status !== "Ferdig").length,
-      admin: periodCases.filter((c) => c.status === "Venter på administrasjon").length,
+      admin: periodCases.filter((c) => c.status === "Venter på forvaltning").length,
       politi: periodCases.filter((c) => c.status === "Venter på politi").length,
     };
   }, [periodCases]);
@@ -202,7 +202,7 @@ const Dashboard = () => {
             />
             <WaitTile
               icon={Building2}
-              label="Venter på administrasjon"
+              label="Venter på forvaltning"
               value={waiting.admin}
               tone="warning"
             />
