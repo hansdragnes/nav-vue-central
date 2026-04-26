@@ -130,6 +130,7 @@ const Dashboard = () => {
         <Panel
           title="Saker per kategori"
           description="Fordeling av portefølje på sakstype"
+          className="xl:col-span-2"
         >
           <div className="flex items-center gap-6">
             <div className="h-64 w-64 shrink-0">
