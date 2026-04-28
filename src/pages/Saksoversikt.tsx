@@ -12,21 +12,7 @@ import {
   type CaseRow,
   type CaseStatus,
 } from "@/data/cases";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, Modal, Select } from "@navikt/ds-react";
 
 const Saksoversikt = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -133,44 +119,36 @@ const Saksoversikt = () => {
       />
 
       <div className="mb-5 flex flex-wrap items-end gap-4 rounded-sm border border-border bg-card px-4 py-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Saksbehandler
-          </label>
-          <Select value={employeeFilter} onValueChange={setEmployee}>
-            <SelectTrigger className="w-64 rounded-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Alle saksbehandlere</SelectItem>
-              <SelectItem value="ikke-tildelt">Ikke tildelt</SelectItem>
-              {EMPLOYEES.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          label="Saksbehandler"
+          value={employeeFilter}
+          onChange={(e) => setEmployee(e.target.value)}
+          className="w-64"
+          size="small"
+        >
+          <option value="alle">Alle saksbehandlere</option>
+          <option value="ikke-tildelt">Ikke tildelt</option>
+          {EMPLOYEES.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </Select>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Status
-          </label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-56 rounded-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Alle statuser</SelectItem>
-              {CASE_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          label="Status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="w-56"
+          size="small"
+        >
+          <option value="alle">Alle statuser</option>
+          {CASE_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
 
         <div className="ml-auto text-sm text-muted-foreground">
           Viser <span className="font-semibold text-foreground">{filteredCases.length}</span> saker
@@ -191,59 +169,43 @@ const Saksoversikt = () => {
         />
       </Panel>
 
-      <Dialog
+      <Modal
         open={assignDialog.open}
-        onOpenChange={(open) =>
-          setAssignDialog((prev) => ({ ...prev, open }))
-        }
+        onClose={() => setAssignDialog((prev) => ({ ...prev, open: false }))}
+        header={{
+          heading: "Tildel saksbehandler",
+          closeButton: true,
+        }}
       >
-        <DialogContent className="rounded-sm">
-          <DialogHeader>
-            <DialogTitle>Tildel saksbehandler</DialogTitle>
-            <DialogDescription>
-              Sak <span className="font-mono">{assignDialog.row?.id}</span> –{" "}
-              {assignDialog.row?.category}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Saksbehandler
-            </label>
-            <Select
-              value={assignDialog.selected ?? "ikke-tildelt"}
-              onValueChange={(v) =>
-                setAssignDialog((prev) => ({ ...prev, selected: v }))
-              }
-            >
-              <SelectTrigger className="rounded-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ikke-tildelt">Ikke tildelt</SelectItem>
-                {EMPLOYEES.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name} · {e.unit}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <button
-              onClick={() => setAssignDialog({ open: false })}
-              className="rounded-sm border border-border px-3 py-2 text-sm font-semibold hover:bg-surface-muted"
-            >
-              Avbryt
-            </button>
-            <button
-              onClick={confirmAssign}
-              className="rounded-sm bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
-            >
-              Lagre tildeling
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Modal.Body>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Sak <span className="font-mono">{assignDialog.row?.id}</span> –{" "}
+            {assignDialog.row?.category}
+          </p>
+          <Select
+            label="Saksbehandler"
+            value={assignDialog.selected ?? "ikke-tildelt"}
+            onChange={(e) =>
+              setAssignDialog((prev) => ({ ...prev, selected: e.target.value }))
+            }
+          >
+            <option value="ikke-tildelt">Ikke tildelt</option>
+            {EMPLOYEES.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name} · {e.unit}
+              </option>
+            ))}
+          </Select>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={confirmAssign}>
+            Lagre tildeling
+          </Button>
+          <Button variant="secondary" onClick={() => setAssignDialog({ open: false })}>
+            Avbryt
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

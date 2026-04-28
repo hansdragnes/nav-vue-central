@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Route, Routes } from "react-router-dom";
+import { Provider as AkselProvider } from "@navikt/ds-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,11 +12,12 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <HashRouter>
+  <AkselProvider locale="nb">
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <HashRouter>
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
@@ -23,9 +25,10 @@ const App = () => (
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </HashRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+        </HashRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AkselProvider>
 );
 
 export default App;

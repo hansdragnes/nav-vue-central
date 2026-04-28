@@ -1,20 +1,20 @@
 import type { CaseRow } from "@/data/cases";
 import { employeeName } from "@/data/cases";
-import { Tag } from "@/components/aksel/Tag";
+import { Tag, Button, Table } from "@navikt/ds-react";
 
-function statusTone(status: CaseRow["status"]) {
-  if (status === "Ny") return "info" as const;
-  if (status === "Under behandling") return "info" as const;
-  if (status.startsWith("Venter")) return "warning" as const;
-  if (status === "Henlagt") return "alt" as const;
-  if (status === "Ferdig") return "success" as const;
-  return "neutral" as const;
+function statusVariant(status: CaseRow["status"]): "neutral" | "info" | "success" | "warning" | "error" | "alt" {
+  if (status === "Ny") return "info";
+  if (status === "Under behandling") return "info";
+  if (status.startsWith("Venter")) return "warning";
+  if (status === "Henlagt") return "alt";
+  if (status === "Ferdig") return "success";
+  return "neutral";
 }
 
-function ageTone(days: number) {
-  if (days > 30) return "error" as const;
-  if (days > 14) return "warning" as const;
-  return "neutral" as const;
+function ageVariant(days: number): "neutral" | "warning" | "error" {
+  if (days > 30) return "error";
+  if (days > 14) return "warning";
+  return "neutral";
 }
 
 interface CaseTableProps {
@@ -40,54 +40,52 @@ export const CaseTable = ({
 
   return (
     <div className="overflow-auto" style={maxHeight ? { maxHeight } : undefined}>
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-5 py-2.5 text-left font-semibold">Saks-ID</th>
-            <th className="px-5 py-2.5 text-left font-semibold">Kategori</th>
-            <th className="px-5 py-2.5 text-left font-semibold">Status</th>
-            <th className="px-5 py-2.5 text-right font-semibold">Alder</th>
-            {!hideEmployee && (
-              <th className="px-5 py-2.5 text-left font-semibold">Saksbehandler</th>
-            )}
-            {onAssign && <th className="px-5 py-2.5 text-right font-semibold">Handling</th>}
-          </tr>
-        </thead>
-        <tbody>
+      <Table size="small">
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell>Saks-ID</Table.HeaderCell>
+            <Table.HeaderCell>Kategori</Table.HeaderCell>
+            <Table.HeaderCell>Status</Table.HeaderCell>
+            <Table.HeaderCell align="right">Alder</Table.HeaderCell>
+            {!hideEmployee && <Table.HeaderCell>Saksbehandler</Table.HeaderCell>}
+            {onAssign && <Table.HeaderCell align="right">Handling</Table.HeaderCell>}
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {rows.map((row) => (
-            <tr
-              key={row.id}
-              className="border-b border-border last:border-0 hover:bg-surface-subtle"
-            >
-              <td className="px-5 py-2.5 font-mono text-xs text-foreground">{row.id}</td>
-              <td className="px-5 py-2.5 text-foreground">{row.category}</td>
-              <td className="px-5 py-2.5">
-                <Tag tone={statusTone(row.status)}>{row.status}</Tag>
-              </td>
-              <td className="px-5 py-2.5 text-right">
-                <Tag tone={ageTone(row.ageDays)}>{row.ageDays} d</Tag>
-              </td>
+            <Table.Row key={row.id}>
+              <Table.DataCell>
+                <span className="font-mono text-xs text-foreground">{row.id}</span>
+              </Table.DataCell>
+              <Table.DataCell>{row.category}</Table.DataCell>
+              <Table.DataCell>
+                <Tag variant={statusVariant(row.status)} size="small">{row.status}</Tag>
+              </Table.DataCell>
+              <Table.DataCell align="right">
+                <Tag variant={ageVariant(row.ageDays)} size="small">{row.ageDays} d</Tag>
+              </Table.DataCell>
               {!hideEmployee && (
-                <td className="px-5 py-2.5 text-muted-foreground">
+                <Table.DataCell>
                   {row.employeeId ? employeeName(row.employeeId) : (
                     <span className="italic text-destructive">Ikke tildelt</span>
                   )}
-                </td>
+                </Table.DataCell>
               )}
               {onAssign && (
-                <td className="px-5 py-2.5 text-right">
-                  <button
+                <Table.DataCell align="right">
+                  <Button
+                    variant="secondary"
+                    size="xsmall"
                     onClick={() => onAssign(row)}
-                    className="rounded-sm border border-border bg-card px-2.5 py-1 text-xs font-semibold text-primary hover:bg-surface-muted"
                   >
                     {row.employeeId ? "Endre" : "Tildel"}
-                  </button>
-                </td>
+                  </Button>
+                </Table.DataCell>
               )}
-            </tr>
+            </Table.Row>
           ))}
-        </tbody>
-      </table>
+        </Table.Body>
+      </Table>
     </div>
   );
 };

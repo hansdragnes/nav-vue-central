@@ -1,13 +1,12 @@
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon } from "@navikt/aksel-icons";
 
 interface KpiCardProps {
   label: string;
   value: string | number;
   delta?: { value: string; direction: "up" | "down"; positive?: boolean };
   hint?: string;
-  icon?: LucideIcon;
+  icon?: React.ComponentType<{ className?: string }>;
   tone?: "default" | "warning" | "error" | "success";
 }
 
@@ -35,7 +34,7 @@ export const KpiCard = ({ label, value, delta, hint, icon: Icon, tone = "default
               delta.positive ? "text-success" : "text-destructive",
             )}
           >
-            {delta.direction === "up" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+            {delta.direction === "up" ? <ArrowUpIcon className="h-3 w-3" aria-hidden /> : <ArrowDownIcon className="h-3 w-3" aria-hidden />}
             {delta.value}
           </span>
         ) : <span />}

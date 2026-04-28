@@ -1,10 +1,10 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, FolderOpen, HelpCircle, Settings } from "lucide-react";
+import { BarChartIcon, FolderIcon, CogIcon, QuestionmarkCircleIcon } from "@navikt/aksel-icons";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", label: "Dashbord", icon: LayoutDashboard, end: true },
-  { to: "/saksoversikt", label: "Saksoversikt", icon: FolderOpen },
+  { to: "/", label: "Dashbord", icon: BarChartIcon, end: true },
+  { to: "/saksoversikt", label: "Saksoversikt", icon: FolderIcon },
 ];
 
 const titleMap: Record<string, { title: string; sub: string }> = {
@@ -62,11 +62,11 @@ export const AppShell = () => {
 
         <div className="border-t border-sidebar-border p-3">
           <button className="flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm text-sidebar-foreground/85 hover:bg-sidebar-accent/60">
-            <Settings className="h-4 w-4" />
+            <CogIcon className="h-4 w-4" aria-hidden />
             Innstillinger
           </button>
           <button className="flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm text-sidebar-foreground/85 hover:bg-sidebar-accent/60">
-            <HelpCircle className="h-4 w-4" />
+            <QuestionmarkCircleIcon className="h-4 w-4" aria-hidden />
             Hjelp
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { ToggleGroup } from "@navikt/ds-react";
 
 export type Scope = "Min avdeling" | "Min enhet";
 export type Period = "Ingen" | "Måned hittil" | "År hittil" | "Inneværende tertial";
@@ -16,47 +16,39 @@ interface ScopeBarProps {
 export const ScopeBar = ({ scope, onScopeChange, period, onPeriodChange }: ScopeBarProps) => {
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-sm border border-border bg-card px-4 py-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Organisasjonsnivå
         </span>
-        <div className="flex rounded-sm border border-border bg-surface-muted p-0.5">
+        <ToggleGroup
+          value={scope}
+          onChange={(val) => val && onScopeChange(val as Scope)}
+          size="small"
+          variant="neutral"
+        >
           {SCOPES.map((s) => (
-            <button
-              key={s}
-              onClick={() => onScopeChange(s)}
-              className={cn(
-                "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
-                scope === s
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
+            <ToggleGroup.Item key={s} value={s}>
               {s}
-            </button>
+            </ToggleGroup.Item>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Periode
         </span>
-        <div className="flex rounded-sm border border-border bg-surface-muted p-0.5">
+        <ToggleGroup
+          value={period}
+          onChange={(val) => val && onPeriodChange(val as Period)}
+          size="small"
+          variant="neutral"
+        >
           {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => onPeriodChange(p)}
-              className={cn(
-                "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
-                period === p
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
+            <ToggleGroup.Item key={p} value={p}>
               {p}
-            </button>
+            </ToggleGroup.Item>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
     </div>
   );

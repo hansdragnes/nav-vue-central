@@ -54,6 +54,11 @@
     --info: 211 100% 39%;
     --info-surface: 211 100% 95%;         /* Blue 100 #E0F0FF */
 
+    /* Alt/nøytral lilla – brukt for "Venter på politi" o.l. */
+    --alt: 280 50% 55%;
+    --alt-foreground: 0 0% 100%;
+    --alt-surface: 280 60% 96%;
+
     /* Borders / inputs */
     --border: 213 17% 84%;                /* Gray 300 #C6CCD0 */
     --border-strong: 213 22% 36%;
@@ -114,6 +119,11 @@
 
     --info: 211 100% 60%;
     --info-surface: 211 60% 18%;
+
+    /* Alt/nøytral lilla */
+    --alt: 280 50% 65%;
+    --alt-foreground: 0 0% 100%;
+    --alt-surface: 280 30% 20%;
 
     --border: 213 30% 24%;
     --border-strong: 213 20% 60%;

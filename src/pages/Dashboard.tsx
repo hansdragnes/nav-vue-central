@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserX, Building2, Shield } from "lucide-react";
+import { PersonGroupIcon, PersonCrossIcon, Buildings2Icon, ShieldIcon } from "@navikt/aksel-icons";
+import { ArrowUpIcon, ArrowDownIcon } from "@navikt/aksel-icons";
+import { Button, Table } from "@navikt/ds-react";
 import {
   Cell,
   Pie,
@@ -195,19 +197,19 @@ const Dashboard = () => {
         <Panel title="Venteoversikt" description="Flaskehalser i saksflyten">
           <div className="space-y-3">
             <WaitTile
-              icon={UserX}
+              icon={PersonCrossIcon}
               label="Ikke tildelte saker"
               value={waiting.unassigned}
               tone="error"
             />
             <WaitTile
-              icon={Building2}
+              icon={Buildings2Icon}
               label="Venter på forvaltning"
               value={waiting.admin}
               tone="warning"
             />
             <WaitTile
-              icon={Shield}
+              icon={ShieldIcon}
               label="Venter på politi"
               value={waiting.politi}
               tone="alt"
@@ -221,12 +223,9 @@ const Dashboard = () => {
           description="Klikk en status for å se saker i listen under"
           actions={
             selectedStatus ? (
-              <button
-                onClick={() => setSelectedStatus(null)}
-                className="text-sm font-semibold text-primary hover:underline"
-              >
+              <Button variant="tertiary" size="small" onClick={() => setSelectedStatus(null)}>
                 Nullstill valg
-              </button>
+              </Button>
             ) : null
           }
         >
@@ -276,12 +275,9 @@ const Dashboard = () => {
           contentClassName="p-0"
           actions={
             selectedStatus ? (
-              <button
-                onClick={() => setSelectedStatus(null)}
-                className="text-sm font-semibold text-primary hover:underline"
-              >
+              <Button variant="tertiary" size="small" onClick={() => setSelectedStatus(null)}>
                 Lukk
-              </button>
+              </Button>
             ) : null
           }
         >
@@ -303,37 +299,35 @@ const Dashboard = () => {
           contentClassName="p-0"
           actions={
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
+              <PersonGroupIcon className="h-3.5 w-3.5" aria-hidden />
               {employeeRows.length} ansatte
             </span>
           }
         >
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-5 py-2.5 text-left font-semibold">Ansatt</th>
-                <th className="px-5 py-2.5 text-right font-semibold">Tildelte</th>
-                <th className="px-5 py-2.5 text-right font-semibold">Aktive</th>
-                <th className="px-5 py-2.5 text-right font-semibold">Fullførte</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table size="small">
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>Ansatt</Table.HeaderCell>
+                <Table.HeaderCell align="right">Tildelte</Table.HeaderCell>
+                <Table.HeaderCell align="right">Aktive</Table.HeaderCell>
+                <Table.HeaderCell align="right">Fullførte</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {employeeRows.map((emp) => (
-                <tr
+                <Table.Row
                   key={emp.id}
                   onClick={() => navigate(`/saksoversikt?ansatt=${emp.id}`)}
-                  className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-subtle"
+                  className="cursor-pointer"
                 >
-                  <td className="px-5 py-3 font-medium text-foreground">{emp.name}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-foreground">{emp.assigned}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-foreground">{emp.active}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">
-                    {emp.completed}
-                  </td>
-                </tr>
+                  <Table.DataCell>{emp.name}</Table.DataCell>
+                  <Table.DataCell align="right">{emp.assigned}</Table.DataCell>
+                  <Table.DataCell align="right">{emp.active}</Table.DataCell>
+                  <Table.DataCell align="right">{emp.completed}</Table.DataCell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table>
         </Panel>
       </div>
     </div>
@@ -349,8 +343,8 @@ interface WaitTileProps {
 
 const toneClasses: Record<WaitTileProps["tone"], string> = {
   error: "border-l-destructive bg-destructive-surface/40 text-destructive",
-  warning: "border-l-warning bg-warning-surface/40 text-[hsl(28_80%_28%)]",
-  alt: "border-l-[hsl(280_50%_55%)] bg-[hsl(280_60%_96%)] text-[hsl(280_50%_30%)]",
+  warning: "border-l-warning bg-warning-surface/40 text-warning-foreground",
+  alt: "border-l-alt bg-alt-surface text-alt",
 };
 
 const WaitTile = ({ icon: Icon, label, value, tone }: WaitTileProps) => (
