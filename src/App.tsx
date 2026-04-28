@@ -1,6 +1,23 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { Provider as AkselProvider } from "@navikt/ds-react";
+import { nb } from "date-fns/locale";
+
+// Aksel locale-objekt for norsk bokmål
+const akselNb = {
+  global: {
+    dateLocale: nb,
+    showMore: "Vis mer",
+    showLess: "Vis mindre",
+    readOnly: "Skrivebeskyttet",
+    close: "Lukk",
+    error: "Feil",
+    info: "Informasjon",
+    success: "Suksess",
+    warning: "Advarsel",
+    announcement: "Kunngjøring",
+  },
+};
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +29,7 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <AkselProvider locale="nb">
+  <AkselProvider locale={akselNb}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
