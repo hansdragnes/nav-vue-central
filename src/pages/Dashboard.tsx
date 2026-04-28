@@ -144,7 +144,6 @@ const Dashboard = () => {
                     nameKey="category"
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
                     outerRadius={100}
                     paddingAngle={1}
                     stroke="hsl(var(--card))"
