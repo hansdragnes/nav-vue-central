@@ -52,6 +52,7 @@ export interface CaseRow {
   category: CaseCategory;
   status: CaseStatus;
   ageDays: number;
+  createdAt: string; // ISO-dato, f.eks. "2024-03-15"
   employeeId: string | null; // null = ikke tildelt
 }
 
@@ -96,11 +97,16 @@ function generateCases(): CaseRow[] {
     const employeeId = unassigned ? null : EMPLOYEES[Math.floor(rng() * EMPLOYEES.length)].id;
 
     const ageDays = Math.floor(rng() * 65) + 1;
+    // Beregn createdAt basert på ageDays (relativt til en fast referansedato)
+    const ref = new Date("2024-12-01");
+    ref.setDate(ref.getDate() - ageDays);
+    const createdAt = ref.toISOString().slice(0, 10);
     rows.push({
       id: `K-2024-${(10000 + i).toString()}`,
       category: cat,
       status,
       ageDays,
+      createdAt,
       employeeId,
     });
   }
