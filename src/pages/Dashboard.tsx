@@ -142,6 +142,7 @@ const Dashboard = () => {
                     data={categoryData}
                     dataKey="count"
                     nameKey="category"
+                    isAnimationActive={false}
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
