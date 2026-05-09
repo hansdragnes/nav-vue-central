@@ -23,6 +23,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
 import LederDashboard2 from "./pages/LederDashboard2";
+import LederDashboard3 from "./pages/LederDashboard3";
 import Saksoversikt from "./pages/Saksoversikt";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -38,6 +39,7 @@ const App = () => (
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<LederDashboard2 />} />
+            <Route path="/leder3" element={<LederDashboard3 />} />
             <Route path="/saksoversikt" element={<Saksoversikt />} />
           </Route>
           <Route path="*" element={<NotFound />} />
