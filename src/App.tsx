@@ -22,9 +22,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
-import Dashboard from "./pages/Dashboard";
-import Dashboard2 from "./pages/Dashboard2";
-import LederDashboard from "./pages/LederDashboard";
 import LederDashboard2 from "./pages/LederDashboard2";
 import Saksoversikt from "./pages/Saksoversikt";
 import NotFound from "./pages/NotFound.tsx";
@@ -40,10 +37,7 @@ const App = () => (
         <HashRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard2" element={<Dashboard2 />} />
-            <Route path="/leder" element={<LederDashboard />} />
-            <Route path="/leder2" element={<LederDashboard2 />} />
+            <Route path="/" element={<LederDashboard2 />} />
             <Route path="/saksoversikt" element={<Saksoversikt />} />
           </Route>
           <Route path="*" element={<NotFound />} />

@@ -3,33 +3,18 @@ import { BarChartIcon, FolderIcon, CogIcon, QuestionmarkCircleIcon } from "@navi
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", label: "Dashbord", icon: BarChartIcon, end: true },
-  { to: "/dashboard2", label: "Dashbord 2", icon: BarChartIcon },
-  { to: "/leder", label: "Lederdashbord", icon: BarChartIcon },
-  { to: "/leder2", label: "Lederdashbord 2", icon: BarChartIcon },
+  { to: "/", label: "Lederdashbord", icon: BarChartIcon, end: true },
   { to: "/saksoversikt", label: "Saksoversikt", icon: FolderIcon },
 ];
 
 const titleMap: Record<string, { title: string; sub: string }> = {
   "/": {
     title: "Lederdashbord",
-    sub: "Oversikt over saker, status og ansatte i din enhet",
-  },
-  "/dashboard2": {
-    title: "Lederdashbord 2",
-    sub: "Utvidet oversikt med nøkkeltall og fristoppfølging",
-  },
-  "/leder": {
-    title: "Lederflate",
-    sub: "Porteføljeoversikt inspirert av Watson Sak",
-  },
-  "/leder2": {
-    title: "Lederdashbord 2",
-    sub: "Redesignet lederdashboard med fokus på god UX og handlingsbarhet",
+    sub: "Porteføljeoversikt for leder – klikk for å utforske",
   },
   "/saksoversikt": {
     title: "Saksoversikt",
-    sub: "Alle saker med mulighet for filtrering og tildeling",
+    sub: "Alle saker med filtrering på status, kategori og saksbehandler",
   },
 };
 

@@ -3,9 +3,8 @@
  *
  * UX-prinsipper:
  * - Scannability: kritiske avvik synlig øverst som alerts, ikke gjemt i tall
- * - Hierarki: nøkkeltall → statusflyt → kapasitet → kategorifordeling → drilldown
- * - Handlingsbarhet: hvert panel gir kontekst for hva lederen bør gjøre
- * - Progressiv disclosure: drilldown-tabeller vises inline ved klikk
+ * - Hierarki: nøkkeltall → statusflyt → kapasitet → kategorifordeling
+ * - Handlingsbarhet: alle interaktive elementer navigerer til filtrert saksoversikt
  * - Visuell koding: rødt = krev handling, gult = advarsel, grønt = OK
  */
 
@@ -21,8 +20,6 @@ import {
   HourglassIcon,
   PersonCrossIcon,
   PersonGroupIcon,
-  Buildings2Icon,
-  ShieldIcon,
   XMarkOctagonIcon,
 } from "@navikt/aksel-icons";
 import {
@@ -32,7 +29,6 @@ import {
   HGrid,
   HStack,
   Table,
-  Tag,
   VStack,
 } from "@navikt/ds-react";
 import {
@@ -50,7 +46,6 @@ import {
 } from "recharts";
 import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";
 import { Panel } from "@/components/aksel/Panel";
-import { CaseTable } from "@/components/CaseTable";
 import { cn } from "@/lib/utils";
 import {
   ACTIVE_STATUSES,
@@ -65,7 +60,7 @@ import {
 // ─── Konstanter ───────────────────────────────────────────────────────────────
 
 const FRIST_DAGER = 30;
-const KAPASITET_MAKS = 20; // referansepunkt for workload-meter
+const KAPASITET_MAKS = 20;
 
 const STATUS_FARGE: Record<CaseStatus, string> = {
   "Ny":                    "hsl(211 100% 39%)",
@@ -88,7 +83,7 @@ const KATEGORI_FARGER = [
   "hsl(45 90% 50%)",
 ];
 
-// ─── Hjelpere ─────────────────────────────────────────────────────────────────
+// ─── Hjelpere ────────────────────────────────────────────────────────────────
 
 function formatDato(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
@@ -104,9 +99,13 @@ function medianAv(tall: number[]): number {
     : Math.round((sortert[midt - 1] + sortert[midt]) / 2);
 }
 
+function saksoversiktUrl(params: Record<string, string>): string {
+  const p = new URLSearchParams(params);
+  return `/saksoversikt?${p.toString()}`;
+}
+
 // ─── Subkomponenter ───────────────────────────────────────────────────────────
 
-/** Nøkkeltallkort – watson-sak Nokkeltallkort-mønster med tone-støtte */
 interface NkProps {
   tittel: string;
   verdi: number | string;
@@ -114,6 +113,7 @@ interface NkProps {
   ikon: React.ReactNode;
   tone?: "default" | "advarsel" | "feil" | "suksess";
   hint?: string;
+  onClick?: () => void;
 }
 
 const NK_IKON_KLS: Record<string, string> = {
@@ -123,9 +123,16 @@ const NK_IKON_KLS: Record<string, string> = {
   suksess:  "bg-success-surface/60 text-success",
 };
 
-function Nk({ tittel, verdi, enhet, ikon, tone = "default", hint }: NkProps) {
+function Nk({ tittel, verdi, enhet, ikon, tone = "default", hint, onClick }: NkProps) {
+  const Komp = onClick ? "button" : "div";
   return (
-    <div className="flex flex-col gap-3 rounded-sm border border-border bg-card p-4 shadow-sm">
+    <Komp
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-3 rounded-sm border border-border bg-card p-4 shadow-sm text-left w-full",
+        onClick && "cursor-pointer transition-shadow hover:shadow-md hover:border-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <BodyShort size="small" className="font-medium text-muted-foreground leading-snug">
           {tittel}
@@ -137,9 +144,7 @@ function Nk({ tittel, verdi, enhet, ikon, tone = "default", hint }: NkProps) {
       <div>
         <div className="flex items-baseline gap-1.5">
           <span className="text-3xl font-semibold tabular-nums text-foreground">{verdi}</span>
-          {enhet && (
-            <span className="text-sm text-muted-foreground">{enhet}</span>
-          )}
+          {enhet && <span className="text-sm text-muted-foreground">{enhet}</span>}
         </div>
         {hint && (
           <BodyShort size="small" className="mt-0.5 text-muted-foreground">
@@ -147,19 +152,24 @@ function Nk({ tittel, verdi, enhet, ikon, tone = "default", hint }: NkProps) {
           </BodyShort>
         )}
       </div>
-    </div>
+      {onClick && (
+        <BodyShort size="small" className="text-primary font-medium">
+          Se saker →
+        </BodyShort>
+      )}
+    </Komp>
   );
 }
 
-/** Horisontalt søylediagram – Recharts-versjon (watson-sak-mønster) */
-interface RechartsSoyleProps {
+function RechartsSoylediagram({
+  data,
+  ariaLabel,
+  onBarClick,
+}: {
   data: { navn: string; antall: number; farge?: string }[];
   ariaLabel: string;
-  onClick?: (navn: string) => void;
-  valgt?: string | null;
-}
-
-function RechartsSoylediagram({ data, ariaLabel, onClick, valgt }: RechartsSoyleProps) {
+  onBarClick?: (navn: string) => void;
+}) {
   const høyde = Math.max(180, data.length * 44 + 40);
   return (
     <div role="img" aria-label={ariaLabel}>
@@ -169,14 +179,10 @@ function RechartsSoylediagram({ data, ariaLabel, onClick, valgt }: RechartsSoyle
           data={data}
           margin={{ left: 0, right: 48, top: 4, bottom: 4 }}
           onClick={(e) => {
-            if (onClick && e?.activeLabel) onClick(e.activeLabel);
+            if (onBarClick && e?.activeLabel) onBarClick(String(e.activeLabel));
           }}
         >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            horizontal={false}
-            stroke="hsl(var(--border))"
-          />
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
           <XAxis
             type="number"
             tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -198,20 +204,16 @@ function RechartsSoylediagram({ data, ariaLabel, onClick, valgt }: RechartsSoyle
               borderRadius: 4,
               fontSize: 12,
             }}
-            formatter={(v: number, n: string) => [`${v} saker`, n]}
+            formatter={(v: number) => [`${v} saker`]}
           />
           <Bar
             dataKey="antall"
             radius={[0, 3, 3, 0]}
             barSize={22}
-            cursor={onClick ? "pointer" : undefined}
+            cursor={onBarClick ? "pointer" : undefined}
           >
             {data.map((d, i) => (
-              <Cell
-                key={d.navn}
-                fill={d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length]}
-                opacity={valgt && valgt !== d.navn ? 0.35 : 1}
-              />
+              <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length]} />
             ))}
             <LabelList
               dataKey="antall"
@@ -225,19 +227,10 @@ function RechartsSoylediagram({ data, ariaLabel, onClick, valgt }: RechartsSoyle
   );
 }
 
-/** Workload-meter: visuell søyle som viser kapasitetsutnyttelse per ansatt */
-interface WorkloadMeterProps {
-  aktive: number;
-  maks?: number;
-  overFrist: number;
-}
-
-function WorkloadMeter({ aktive, maks = KAPASITET_MAKS, overFrist }: WorkloadMeterProps) {
-  const pct = Math.min(100, Math.round((aktive / maks) * 100));
+function WorkloadMeter({ aktive, overFrist }: { aktive: number; overFrist: number }) {
+  const pct = Math.min(100, Math.round((aktive / KAPASITET_MAKS) * 100));
   const farge =
-    pct >= 90 ? "bg-destructive" :
-    pct >= 70 ? "bg-warning" :
-    "bg-success";
+    pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-warning" : "bg-success";
   return (
     <div className="flex items-center gap-2 min-w-0">
       <div className="flex-1 h-2 bg-surface-muted rounded-full overflow-hidden">
@@ -245,42 +238,29 @@ function WorkloadMeter({ aktive, maks = KAPASITET_MAKS, overFrist }: WorkloadMet
       </div>
       <span className="text-xs tabular-nums text-muted-foreground w-8 text-right shrink-0">{aktive}</span>
       {overFrist > 0 && (
-        <span className="text-xs font-semibold text-destructive tabular-nums shrink-0">
-          +{overFrist}f
-        </span>
+        <span className="text-xs font-semibold text-destructive tabular-nums shrink-0">+{overFrist}f</span>
       )}
     </div>
   );
 }
 
-/** Behandlingstid-spenn – mini-visualisering inspirert av BehandlingstidVisning */
-interface SpennProps {
-  min: number;
-  median: number;
-  gjennomsnitt: number;
-  maks: number;
-}
-
-function BehandlingstidSpenn({ min, median, gjennomsnitt, maks }: SpennProps) {
+function BehandlingstidSpenn({
+  min, median, gjennomsnitt, maks,
+}: { min: number; median: number; gjennomsnitt: number; maks: number }) {
   const range = maks - min || 1;
   const medianPct = ((median - min) / range) * 100;
   const snittPct  = ((gjennomsnitt - min) / range) * 100;
   return (
-    <div
-      role="img"
-      aria-label={`Behandlingstid min ${min} – maks ${maks} dager. Median ${median} d. Snitt ${gjennomsnitt} d.`}
-    >
+    <div role="img" aria-label={`Behandlingstid min ${min} – maks ${maks} dager. Median ${median} d. Snitt ${gjennomsnitt} d.`}>
       <HStack gap="2" align="center" className="mb-3">
         <BodyShort size="small" className="text-muted-foreground whitespace-nowrap w-8 text-right">{min}d</BodyShort>
         <div className="relative flex-1 h-3 rounded-full bg-surface-muted overflow-visible">
           <div className="absolute inset-0 rounded-full bg-secondary" />
-          {/* Median */}
           <div
             className="absolute top-1/2 -translate-y-1/2 h-5 w-0.5 rounded bg-primary"
             style={{ left: `${medianPct}%` }}
             title={`Median: ${median} dager`}
           />
-          {/* Gjennomsnitt */}
           <div
             className="absolute top-1/2 -translate-y-1/2 h-5 w-0.5 rounded bg-warning"
             style={{ left: `${snittPct}%` }}
@@ -305,14 +285,15 @@ function BehandlingstidSpenn({ min, median, gjennomsnitt, maks }: SpennProps) {
 
 // ─── Hoved-komponent ─────────────────────────────────────────────────────────
 
-type DrilldownKilde = { type: "status"; verdi: CaseStatus } | { type: "ansatt"; id: string; navn: string } | null;
-
 export default function LederDashboard2() {
   const navigate = useNavigate();
   const [scope, setScope]   = useState<Scope>("Min avdeling");
   const [period, setPeriod] = useState<Period>("Ingen");
-  const [drilldown, setDrilldown] = useState<DrilldownKilde>(null);
   const [visAnsatte, setVisAnsatte] = useState(true);
+
+  // Naviger til saksoversikt med filtre
+  const tilSaksoversikt = (params: Record<string, string>) =>
+    navigate(saksoversiktUrl(params));
 
   // ── Filtrering ──
   const scopedCases = useMemo(() => {
@@ -337,14 +318,15 @@ export default function LederDashboard2() {
     const overFrist = åpne.filter((c) => c.ageDays > FRIST_DAGER);
     const uTildelt  = åpne.filter((c) => c.employeeId === null);
     const iBero     = cases.filter(
-      (c) => c.status === "Venter på bruker" || c.status === "Venter på forvaltning" || c.status === "Venter på politi",
+      (c) => c.status === "Venter på bruker"
+          || c.status === "Venter på forvaltning"
+          || c.status === "Venter på politi",
     );
     const eldst = åpne.reduce<CaseRow | null>(
       (p, c) => (!p || c.ageDays > p.ageDays ? c : p), null,
     );
-    // Behandlingstid basert på ferdigstilte saker
     const ferdigeDager = ferdig.map((c) => c.ageDays);
-    const snittBeh = ferdigeDager.length
+    const snittBeh  = ferdigeDager.length
       ? Math.round(ferdigeDager.reduce((a, b) => a + b, 0) / ferdigeDager.length)
       : 0;
     const medianBeh = medianAv(ferdigeDager);
@@ -352,12 +334,8 @@ export default function LederDashboard2() {
     const maksBeh   = ferdigeDager.length ? Math.max(...ferdigeDager) : 0;
 
     return {
-      totalt: cases.length,
-      aktive: aktive.length,
-      ferdig: ferdig.length,
-      overFrist: overFrist.length,
-      uTildelt: uTildelt.length,
-      iBero: iBero.length,
+      totalt: cases.length, aktive: aktive.length, ferdig: ferdig.length,
+      overFrist: overFrist.length, uTildelt: uTildelt.length, iBero: iBero.length,
       eldst,
       beh: { snitt: snittBeh, median: medianBeh, min: minBeh, maks: maksBeh, antall: ferdig.length },
     };
@@ -373,7 +351,7 @@ export default function LederDashboard2() {
     [cases],
   );
 
-  // ── Kategoridata ──
+  // ── Kategoridata (sortert etter volum) ──
   const kategoriData = useMemo(
     () => CASE_CATEGORIES.map((cat, i) => ({
       navn: cat,
@@ -383,69 +361,37 @@ export default function LederDashboard2() {
     [cases],
   );
 
-  // ── Ansattedata ──
+  // ── Ansattedata (sortert etter fristbrudd → aktive) ──
   const ansatteData = useMemo(() => {
     const liste = scope === "Min enhet"
       ? EMPLOYEES.filter((e) => e.unit === "Kontroll Øst")
       : EMPLOYEES;
     return liste.map((emp) => {
-      const egne     = cases.filter((c) => c.employeeId === emp.id);
-      const aktive   = egne.filter((c) => ACTIVE_STATUSES.includes(c.status));
-      const ferdig   = egne.filter((c) => c.status === "Ferdig");
+      const egne      = cases.filter((c) => c.employeeId === emp.id);
+      const aktive    = egne.filter((c) => ACTIVE_STATUSES.includes(c.status));
+      const ferdig    = egne.filter((c) => c.status === "Ferdig");
       const overFrist = egne.filter((c) => c.ageDays > FRIST_DAGER && c.status !== "Ferdig");
-      const nyeste   = egne.reduce<CaseRow | null>(
-        (p, c) => (!p || c.ageDays < p.ageDays ? c : p), null,
-      );
-      return {
-        id: emp.id,
-        navn: emp.name,
-        enhet: emp.unit,
-        tildelte: egne.length,
-        aktive: aktive.length,
-        ferdig: ferdig.length,
-        overFrist: overFrist.length,
-        nyeste,
-      };
+      return { id: emp.id, navn: emp.name, enhet: emp.unit,
+               tildelte: egne.length, aktive: aktive.length,
+               ferdig: ferdig.length, overFrist: overFrist.length };
     }).sort((a, b) => b.overFrist - a.overFrist || b.aktive - a.aktive);
   }, [cases, scope]);
 
-  // ── Drilldown-saker ──
-  const drilldownSaker = useMemo<CaseRow[]>(() => {
-    if (!drilldown) return [];
-    if (drilldown.type === "status") return cases.filter((c) => c.status === drilldown.verdi);
-    return cases.filter((c) => c.employeeId === drilldown.id);
-  }, [cases, drilldown]);
-
-  const toggleStatus = (navn: string) => {
-    const s = navn as CaseStatus;
-    setDrilldown((prev) =>
-      prev?.type === "status" && prev.verdi === s ? null : { type: "status", verdi: s },
-    );
-  };
-
-  const toggleAnsatt = (id: string, navn: string) => {
-    setDrilldown((prev) =>
-      prev?.type === "ansatt" && prev.id === id ? null : { type: "ansatt", id, navn },
-    );
-  };
-
-  // ── Alerts – kun synlig om det er noe å si fra om ──
   const harAlerts = nk.overFrist > 0 || nk.uTildelt > 0;
 
   return (
     <div className="space-y-5">
       <ScopeBar scope={scope} onScopeChange={setScope} period={period} onPeriodChange={setPeriod} />
 
-      {/* ── 1. Alerts – kritiske avvik øverst ── */}
+      {/* ── 1. Alerts ── */}
       {harAlerts && (
         <section aria-label="Varsler som krever oppmerksomhet" className="space-y-2">
           {nk.overFrist > 0 && (
             <Alert variant="error" size="small">
-              <strong>{nk.overFrist} saker er over {FRIST_DAGER}-dagersfristen</strong> — disse bør behandles snarest.
-              {" "}
+              <strong>{nk.overFrist} saker er over {FRIST_DAGER}-dagersfristen.</strong>{" "}
               <button
                 className="font-medium underline underline-offset-2 hover:no-underline"
-                onClick={() => setDrilldown({ type: "status", verdi: "Under behandling" })}
+                onClick={() => tilSaksoversikt({ status: "Under behandling" })}
               >
                 Se aktive saker
               </button>
@@ -453,13 +399,19 @@ export default function LederDashboard2() {
           )}
           {nk.uTildelt > 0 && (
             <Alert variant="warning" size="small">
-              <strong>{nk.uTildelt} saker er ikke tildelt</strong> — fordel disse til saksbehandlere.
+              <strong>{nk.uTildelt} saker er ikke tildelt.</strong>{" "}
+              <button
+                className="font-medium underline underline-offset-2 hover:no-underline"
+                onClick={() => tilSaksoversikt({ ansatt: "ikke-tildelt" })}
+              >
+                Se ikke-tildelte saker
+              </button>
             </Alert>
           )}
         </section>
       )}
 
-      {/* ── 2. Nøkkeltall ── */}
+      {/* ── 2. Nøkkeltall – alle klikkbare ── */}
       <section aria-labelledby="nk-heading">
         <Heading
           level="2"
@@ -474,12 +426,14 @@ export default function LederDashboard2() {
             tittel="Totalt antall saker"
             verdi={nk.totalt}
             ikon={<BarChartIcon aria-hidden fontSize="1.1rem" />}
+            onClick={() => tilSaksoversikt({})}
           />
           <Nk
             tittel="Aktive saker"
             verdi={nk.aktive}
             ikon={<HourglassIcon aria-hidden fontSize="1.1rem" />}
             hint={`${Math.round((nk.aktive / Math.max(nk.totalt, 1)) * 100)}% av portefølje`}
+            onClick={() => tilSaksoversikt({ status: "Under behandling" })}
           />
           <Nk
             tittel="Ferdigstilte"
@@ -487,6 +441,7 @@ export default function LederDashboard2() {
             tone="suksess"
             ikon={<CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />}
             hint={nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined}
+            onClick={() => tilSaksoversikt({ status: "Ferdig" })}
           />
           <Nk
             tittel="Over frist"
@@ -494,6 +449,7 @@ export default function LederDashboard2() {
             tone={nk.overFrist > 0 ? "feil" : "suksess"}
             ikon={<XMarkOctagonIcon aria-hidden fontSize="1.1rem" />}
             hint={`>${FRIST_DAGER} dager åpen`}
+            onClick={() => tilSaksoversikt({ status: "Under behandling" })}
           />
           <Nk
             tittel="Ikke tildelt"
@@ -501,45 +457,47 @@ export default function LederDashboard2() {
             tone={nk.uTildelt > 0 ? "advarsel" : "suksess"}
             ikon={<PersonCrossIcon aria-hidden fontSize="1.1rem" />}
             hint="Krever tildeling"
+            onClick={() => tilSaksoversikt({ ansatt: "ikke-tildelt" })}
           />
         </HGrid>
       </section>
 
-      {/* ── 3. Statusflyt + behandlingstid ── */}
+      {/* ── 3. Statusfordeling + behandlingstid ── */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        {/* Statusflyt */}
         <Panel
           title="Statusfordeling"
-          description="Klikk en rad for å se saksliste"
+          description="Klikk en søyle for å åpne filtrert saksoversikt"
           className="xl:col-span-3"
         >
           <RechartsSoylediagram
             data={statusData}
             ariaLabel={`Horisontalt søylediagram: ${statusData.map((s) => `${s.navn} ${s.antall}`).join(", ")}`}
-            onClick={toggleStatus}
-            valgt={drilldown?.type === "status" ? drilldown.verdi : null}
+            onBarClick={(navn) => tilSaksoversikt({ status: navn })}
           />
-          {/* Venteflaskehalser kompakt under diagrammet */}
+          {/* Venteflaskehalser kompakt */}
           <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4">
             {[
-              { label: "Ikke tildelt", verdi: nk.uTildelt, tone: "feil" as const },
-              { label: "Venter forvaltning", verdi: cases.filter((c) => c.status === "Venter på forvaltning").length, tone: "advarsel" as const },
-              { label: "Venter politi", verdi: cases.filter((c) => c.status === "Venter på politi").length, tone: "default" as const },
+              { label: "Ikke tildelt",      verdi: nk.uTildelt, tone: "feil",     params: { ansatt: "ikke-tildelt" } },
+              { label: "Venter forvaltning", verdi: cases.filter((c) => c.status === "Venter på forvaltning").length, tone: "advarsel", params: { status: "Venter på forvaltning" } },
+              { label: "Venter politi",      verdi: cases.filter((c) => c.status === "Venter på politi").length, tone: "default", params: { status: "Venter på politi" } },
             ].map((f) => (
-              <div key={f.label} className="text-center">
+              <button
+                key={f.label}
+                onClick={() => tilSaksoversikt(f.params)}
+                className="text-center rounded-sm p-2 hover:bg-surface-subtle transition-colors cursor-pointer"
+              >
                 <div className={cn(
                   "text-xl font-bold tabular-nums",
-                  f.tone === "feil" ? "text-destructive" :
+                  f.tone === "feil"     ? "text-destructive" :
                   f.tone === "advarsel" ? "text-warning-foreground" :
-                  "text-foreground"
+                  "text-foreground",
                 )}>{f.verdi}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">{f.label}</div>
-              </div>
+              </button>
             ))}
           </div>
         </Panel>
 
-        {/* Behandlingstid + eldste sak */}
         <Panel
           title="Behandlingstid"
           description={`Basert på ${nk.beh.antall} ferdigstilte saker`}
@@ -556,14 +514,16 @@ export default function LederDashboard2() {
                 />
                 <HGrid columns={2} gap="3">
                   {[
-                    { tittel: "Minimum", verdi: nk.beh.min },
-                    { tittel: "Median", verdi: nk.beh.median },
-                    { tittel: "Gjennomsnitt", verdi: nk.beh.snitt },
-                    { tittel: "Maksimum", verdi: nk.beh.maks },
+                    { tittel: "Minimum",      verdi: nk.beh.min    },
+                    { tittel: "Median",        verdi: nk.beh.median },
+                    { tittel: "Gjennomsnitt",  verdi: nk.beh.snitt  },
+                    { tittel: "Maksimum",      verdi: nk.beh.maks   },
                   ].map((m) => (
                     <div key={m.tittel} className="rounded-sm border border-border bg-surface-subtle p-3">
                       <BodyShort size="small" className="text-muted-foreground">{m.tittel}</BodyShort>
-                      <div className="text-xl font-semibold tabular-nums">{m.verdi}<span className="text-sm font-normal text-muted-foreground ml-1">d</span></div>
+                      <div className="text-xl font-semibold tabular-nums">
+                        {m.verdi}<span className="text-sm font-normal text-muted-foreground ml-1">d</span>
+                      </div>
                     </div>
                   ))}
                 </HGrid>
@@ -571,8 +531,6 @@ export default function LederDashboard2() {
             ) : (
               <BodyShort className="text-muted-foreground">Ingen ferdigstilte saker i valgt periode.</BodyShort>
             )}
-
-            {/* Eldste åpne sak */}
             {nk.eldst && (
               <div className="rounded-sm border border-destructive/30 bg-destructive-surface/20 p-3">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -589,10 +547,10 @@ export default function LederDashboard2() {
         </Panel>
       </div>
 
-      {/* ── 4. Kapasitetsoversikt (ansatttabell med workload-meter) ── */}
+      {/* ── 4. Kapasitetsoversikt ── */}
       <Panel
         title="Kapasitetsoversikt"
-        description="Aktive saker og fristbrudd per saksbehandler"
+        description="Klikk en rad for å se sakslisten til saksbehandleren"
         actions={
           <HStack gap="3" align="center">
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -604,7 +562,9 @@ export default function LederDashboard2() {
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               aria-expanded={visAnsatte}
             >
-              {visAnsatte ? <ChevronUpIcon className="h-4 w-4" aria-hidden /> : <ChevronDownIcon className="h-4 w-4" aria-hidden />}
+              {visAnsatte
+                ? <ChevronUpIcon className="h-4 w-4" aria-hidden />
+                : <ChevronDownIcon className="h-4 w-4" aria-hidden />}
               {visAnsatte ? "Skjul" : "Vis"}
             </button>
           </HStack>
@@ -618,7 +578,7 @@ export default function LederDashboard2() {
               <Table.HeaderCell>
                 <HStack gap="1" align="center">
                   Kapasitet
-                  <span className="text-xs font-normal text-muted-foreground">(aktive / {KAPASITET_MAKS})</span>
+                  <span className="text-xs font-normal text-muted-foreground">(aktive/{KAPASITET_MAKS})</span>
                 </HStack>
               </Table.HeaderCell>
               <Table.HeaderCell align="right">Tildelte</Table.HeaderCell>
@@ -628,42 +588,32 @@ export default function LederDashboard2() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {ansatteData.map((emp) => {
-              const erValgt = drilldown?.type === "ansatt" && drilldown.id === emp.id;
-              return (
-                <Table.Row
-                  key={emp.id}
-                  onClick={() => toggleAnsatt(emp.id, emp.navn)}
-                  className={cn(
-                    "cursor-pointer",
-                    erValgt && "bg-secondary",
-                  )}
-                >
-                  <Table.DataCell>
-                    <div className="font-medium text-foreground">{emp.navn}</div>
-                    <div className="text-xs text-muted-foreground">{emp.enhet}</div>
-                  </Table.DataCell>
-                  <Table.DataCell>
-                    <WorkloadMeter
-                      aktive={emp.aktive}
-                      maks={KAPASITET_MAKS}
-                      overFrist={emp.overFrist}
-                    />
-                  </Table.DataCell>
-                  <Table.DataCell align="right">{emp.tildelte}</Table.DataCell>
-                  <Table.DataCell align="right">{emp.aktive}</Table.DataCell>
-                  <Table.DataCell align="right">{emp.ferdig}</Table.DataCell>
-                  <Table.DataCell align="right">
-                    <span className={cn(
-                      "font-semibold tabular-nums",
-                      emp.overFrist > 0 ? "text-destructive" : "text-muted-foreground",
-                    )}>
-                      {emp.overFrist}
-                    </span>
-                  </Table.DataCell>
-                </Table.Row>
-              );
-            })}
+            {ansatteData.map((emp) => (
+              <Table.Row
+                key={emp.id}
+                onClick={() => tilSaksoversikt({ ansatt: emp.id })}
+                className="cursor-pointer hover:bg-surface-subtle"
+              >
+                <Table.DataCell>
+                  <div className="font-medium text-foreground">{emp.navn}</div>
+                  <div className="text-xs text-muted-foreground">{emp.enhet}</div>
+                </Table.DataCell>
+                <Table.DataCell>
+                  <WorkloadMeter aktive={emp.aktive} overFrist={emp.overFrist} />
+                </Table.DataCell>
+                <Table.DataCell align="right">{emp.tildelte}</Table.DataCell>
+                <Table.DataCell align="right">{emp.aktive}</Table.DataCell>
+                <Table.DataCell align="right">{emp.ferdig}</Table.DataCell>
+                <Table.DataCell align="right">
+                  <span className={cn(
+                    "font-semibold tabular-nums",
+                    emp.overFrist > 0 ? "text-destructive" : "text-muted-foreground",
+                  )}>
+                    {emp.overFrist}
+                  </span>
+                </Table.DataCell>
+              </Table.Row>
+            ))}
           </Table.Body>
         </Table>
       </Panel>
@@ -672,16 +622,17 @@ export default function LederDashboard2() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
         <Panel
           title="Fordeling per sakstype"
-          description="Sortert etter volum"
+          description="Klikk en søyle for å åpne filtrert saksoversikt"
           className="xl:col-span-3"
         >
           <RechartsSoylediagram
             data={kategoriData}
             ariaLabel={`Saker per kategori: ${kategoriData.map((k) => `${k.navn} ${k.antall}`).join(", ")}`}
+            onBarClick={(navn) => tilSaksoversikt({ kategori: navn })}
           />
         </Panel>
 
-        <Panel title="Porteføljefordeling" description="Kakediagram per sakstype" className="xl:col-span-2">
+        <Panel title="Porteføljefordeling" description="Klikk en sektor for å filtrere" className="xl:col-span-2">
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -697,6 +648,8 @@ export default function LederDashboard2() {
                   paddingAngle={2}
                   stroke="hsl(var(--card))"
                   strokeWidth={2}
+                  onClick={(entry) => tilSaksoversikt({ kategori: entry.navn })}
+                  style={{ cursor: "pointer" }}
                 >
                   {kategoriData.map((d, i) => (
                     <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length]} />
@@ -719,62 +672,28 @@ export default function LederDashboard2() {
               const total = kategoriData.reduce((s, k) => s + k.antall, 0);
               const pct   = total > 0 ? Math.round((d.antall / total) * 100) : 0;
               return (
-                <li key={d.navn} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <span
-                      className="shrink-0 h-2 w-2 rounded-full"
-                      style={{ background: d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length] }}
-                    />
-                    <span className="truncate">{d.navn}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums font-semibold text-foreground">
-                    {d.antall} <span className="font-normal text-muted-foreground">({pct}%)</span>
-                  </span>
+                <li key={d.navn}>
+                  <button
+                    onClick={() => tilSaksoversikt({ kategori: d.navn })}
+                    className="flex w-full items-center justify-between gap-2 text-xs rounded-sm px-1 py-0.5 hover:bg-surface-subtle transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                      <span
+                        className="shrink-0 h-2 w-2 rounded-full"
+                        style={{ background: d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length] }}
+                      />
+                      <span className="truncate">{d.navn}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-foreground">
+                      {d.antall} <span className="font-normal text-muted-foreground">({pct}%)</span>
+                    </span>
+                  </button>
                 </li>
               );
             })}
           </ul>
         </Panel>
       </div>
-
-      {/* ── 6. Drilldown – inline, vises ved klikk ── */}
-      {drilldown && (
-        <Panel
-          title={
-            drilldown.type === "status"
-              ? `Saker med status: ${drilldown.verdi}`
-              : `Saker tildelt: ${drilldown.navn}`
-          }
-          description={`${drilldownSaker.length} saker`}
-          contentClassName="p-0"
-          actions={
-            <HStack gap="3" align="center">
-              {drilldown.type === "ansatt" && (
-                <button
-                  className="text-xs font-medium text-primary hover:underline"
-                  onClick={() => navigate(`/saksoversikt?ansatt=${drilldown.id}`)}
-                >
-                  Åpne saksoversikt
-                </button>
-              )}
-              <button
-                className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => setDrilldown(null)}
-              >
-                Lukk ✕
-              </button>
-            </HStack>
-          }
-        >
-          {drilldownSaker.length > 0 ? (
-            <CaseTable rows={drilldownSaker} maxHeight="380px" />
-          ) : (
-            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-              Ingen saker
-            </div>
-          )}
-        </Panel>
-      )}
     </div>
   );
 }
