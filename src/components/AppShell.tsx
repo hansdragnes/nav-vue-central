@@ -6,6 +6,7 @@ const navItems = [
   { to: "/", label: "Dashbord", icon: BarChartIcon, end: true },
   { to: "/dashboard2", label: "Dashbord 2", icon: BarChartIcon },
   { to: "/leder", label: "Lederdashbord", icon: BarChartIcon },
+  { to: "/leder2", label: "Lederdashbord 2", icon: BarChartIcon },
   { to: "/saksoversikt", label: "Saksoversikt", icon: FolderIcon },
 ];
 
@@ -21,6 +22,10 @@ const titleMap: Record<string, { title: string; sub: string }> = {
   "/leder": {
     title: "Lederflate",
     sub: "Porteføljeoversikt inspirert av Watson Sak",
+  },
+  "/leder2": {
+    title: "Lederdashbord 2",
+    sub: "Redesignet lederdashboard med fokus på god UX og handlingsbarhet",
   },
   "/saksoversikt": {
     title: "Saksoversikt",
