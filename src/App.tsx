@@ -24,6 +24,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
 import Dashboard from "./pages/Dashboard";
 import Dashboard2 from "./pages/Dashboard2";
+import LederDashboard from "./pages/LederDashboard";
 import Saksoversikt from "./pages/Saksoversikt";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -40,6 +41,7 @@ const App = () => (
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard2" element={<Dashboard2 />} />
+            <Route path="/leder" element={<LederDashboard />} />
             <Route path="/saksoversikt" element={<Saksoversikt />} />
           </Route>
           <Route path="*" element={<NotFound />} />

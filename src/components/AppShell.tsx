@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Dashbord", icon: BarChartIcon, end: true },
   { to: "/dashboard2", label: "Dashbord 2", icon: BarChartIcon },
+  { to: "/leder", label: "Lederdashbord", icon: BarChartIcon },
   { to: "/saksoversikt", label: "Saksoversikt", icon: FolderIcon },
 ];
 
@@ -16,6 +17,10 @@ const titleMap: Record<string, { title: string; sub: string }> = {
   "/dashboard2": {
     title: "Lederdashbord 2",
     sub: "Utvidet oversikt med nøkkeltall og fristoppfølging",
+  },
+  "/leder": {
+    title: "Lederflate",
+    sub: "Porteføljeoversikt inspirert av Watson Sak",
   },
   "/saksoversikt": {
     title: "Saksoversikt",
