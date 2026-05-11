@@ -174,7 +174,7 @@ function Soylediagram({
             contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
             formatter={(v: number) => [`${v} saker`]}
           />
-          <Bar dataKey="antall" radius={[0, 3, 3, 0]} barSize={22} cursor={onBarClick ? "pointer" : undefined}>
+          <Bar dataKey="antall" radius={[0, 3, 3, 0]} barSize={22} cursor={onBarClick ? "pointer" : undefined} isAnimationActive={false}>
             {data.map((d, i) => <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length]} />)}
             <LabelList dataKey="antall" position="right" style={{ fontSize: 12, fontWeight: 600, fill: "hsl(var(--foreground))" }} />
           </Bar>
@@ -303,6 +303,7 @@ function StatusTreemap({
           data={treemapData.children}
           dataKey="size"
           content={<CustomContent />}
+          isAnimationActive={false}
         >
           <RechartsTooltip
             contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
@@ -362,6 +363,7 @@ function KategoriBubbleChart({
               data={data}
               onClick={(entry) => onKlikk(entry.navn)}
               style={{ cursor: "pointer" }}
+              isAnimationActive={false}
             >
               {data.map((d, i) => (
                 <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i % KATEGORI_FARGER.length]} fillOpacity={0.85} />
