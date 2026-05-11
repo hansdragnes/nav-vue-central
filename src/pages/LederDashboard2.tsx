@@ -421,7 +421,7 @@ export default function LederDashboard2() {
         >
           Nøkkeltall
         </Heading>
-        <HGrid columns={{ xs: 2, sm: 3, lg: 5 }} gap="3">
+        <HGrid columns={{ xs: 2, sm: 3, lg: 6 }} gap="3">
           <Nk
             tittel="Totalt antall saker"
             verdi={nk.totalt}
@@ -458,6 +458,15 @@ export default function LederDashboard2() {
             ikon={<PersonCrossIcon aria-hidden fontSize="1.1rem" />}
             hint="Krever tildeling"
             onClick={() => tilSaksoversikt({ ansatt: "ikke-tildelt" })}
+          />
+          <Nk
+            tittel="Eldste åpne sak"
+            verdi={nk.eldst ? nk.eldst.ageDays : 0}
+            enhet="dager"
+            tone={nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default"}
+            ikon={<ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />}
+            hint={nk.eldst ? nk.eldst.id : "Ingen åpne saker"}
+            onClick={nk.eldst ? () => tilSaksoversikt({ status: "Under behandling" }) : undefined}
           />
         </HGrid>
       </section>
@@ -530,18 +539,6 @@ export default function LederDashboard2() {
               </>
             ) : (
               <BodyShort className="text-muted-foreground">Ingen ferdigstilte saker i valgt periode.</BodyShort>
-            )}
-            {nk.eldst && (
-              <div className="rounded-sm border border-destructive/30 bg-destructive-surface/20 p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <ExclamationmarkTriangleIcon className="h-4 w-4 text-destructive shrink-0" aria-hidden />
-                  <BodyShort size="small" className="font-semibold text-destructive">Eldste åpne sak</BodyShort>
-                </div>
-                <p className="text-sm font-semibold text-foreground">{nk.eldst.id}</p>
-                <p className="text-xs text-muted-foreground">
-                  Opprettet {formatDato(nk.eldst.createdAt)} · {nk.eldst.ageDays} dager gammel
-                </p>
-              </div>
             )}
           </VStack>
         </Panel>
