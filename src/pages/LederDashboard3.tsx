@@ -606,15 +606,16 @@ export default function LederDashboard3() {
 
         {visning === "klassisk" ? (
           /* Visning A: KPI-kort */
-          <HGrid columns={{ xs: 2, sm: 3, lg: 5 }} gap="3">
+          <HGrid columns={{ xs: 2, sm: 3, lg: 6 }} gap="3">
             {[
               { tittel: "Totalt",       verdi: nk.totalt,    tone: "default",  ikon: <BarChartIcon aria-hidden fontSize="1.1rem" />,       param: {} },
               { tittel: "Aktive",       verdi: nk.aktive,    tone: "default",  ikon: <HourglassIcon aria-hidden fontSize="1.1rem" />,       param: { status: "Under behandling" }, hint: `${Math.round((nk.aktive / Math.max(nk.totalt,1))*100)}%` },
               { tittel: "Ferdigstilte", verdi: nk.ferdig,    tone: "suksess",  ikon: <CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Ferdig" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d` : undefined },
               { tittel: "Over frist",   verdi: nk.overFrist, tone: nk.overFrist > 0 ? "feil" : "suksess", ikon: <XMarkOctagonIcon aria-hidden fontSize="1.1rem" />, param: { status: "Under behandling" }, hint: `>${FRIST_DAGER} dager` },
               { tittel: "Ikke tildelt", verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", ikon: <PersonCrossIcon aria-hidden fontSize="1.1rem" />, param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
+              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", ikon: <ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Under behandling" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
             ].map((k) => (
-              <NkKort key={k.tittel} tittel={k.tittel} verdi={k.verdi} tone={k.tone as any}
+              <NkKort key={k.tittel} tittel={k.tittel} verdi={k.verdi} enhet={(k as any).enhet} tone={k.tone as any}
                 ikon={k.ikon} hint={k.hint} onClick={() => tilSaksoversikt(k.param)} />
             ))}
           </HGrid>
@@ -628,6 +629,7 @@ export default function LederDashboard3() {
               { tittel: "Ferdigstilte", verdi: nk.ferdig,    tone: "suksess",  param: { status: "Ferdig" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined },
               { tittel: "Over frist",   verdi: nk.overFrist, tone: nk.overFrist > 0 ? "feil" : "suksess", param: { status: "Under behandling" }, hint: `>${FRIST_DAGER} dager åpen` },
               { tittel: "Ikke tildelt", verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
+              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", param: { status: "Under behandling" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
             ]}
           />
         )}
@@ -809,20 +811,6 @@ export default function LederDashboard3() {
           />
         )}
       </Panel>
-
-      {/* ── Eldste åpne sak – felles begge visninger ── */}
-      {nk.eldst && (
-        <div className="rounded-sm border border-destructive/30 bg-destructive-surface/20 p-4 flex items-start gap-3">
-          <ExclamationmarkTriangleIcon className="h-5 w-5 text-destructive shrink-0 mt-0.5" aria-hidden />
-          <div>
-            <BodyShort size="small" className="font-semibold text-destructive mb-0.5">Eldste åpne sak</BodyShort>
-            <p className="text-sm font-semibold text-foreground">{nk.eldst.id}</p>
-            <p className="text-xs text-muted-foreground">
-              Opprettet {formatDato(nk.eldst.createdAt)} · {nk.eldst.ageDays} dager gammel
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
