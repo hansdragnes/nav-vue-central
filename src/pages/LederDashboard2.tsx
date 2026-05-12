@@ -63,13 +63,13 @@ const FRIST_DAGER = 30;
 const KAPASITET_MAKS = 20;
 
 const STATUS_FARGE: Record<CaseStatus, string> = {
-  "Ny":                    "hsl(211 100% 39%)",
-  "Under behandling":      "hsl(211 100% 60%)",
-  "Venter på bruker":      "hsl(35 100% 47%)",
-  "Venter på forvaltning": "hsl(28 90% 55%)",
-  "Venter på politi":      "hsl(280 50% 55%)",
-  "Henlagt":               "hsl(213 67% 30%)",
-  "Ferdig":                "hsl(145 63% 28%)",
+  "Ny":                       "hsl(211 100% 39%)",
+  "Utredes":                  "hsl(211 100% 60%)",
+  "Strafferettslig vurdering":"hsl(280 50% 55%)",
+  "Venter på forvaltning":    "hsl(28 90% 55%)",
+  "Venter på politi":         "hsl(35 100% 47%)",
+  "Henlagt":                  "hsl(213 67% 30%)",
+  "Avsluttet":                "hsl(145 63% 28%)",
 };
 
 const KATEGORI_FARGER = [
@@ -312,14 +312,13 @@ export default function LederDashboard2() {
 
   // ── Nøkkeltall ──
   const nk = useMemo(() => {
-    const åpne      = cases.filter((c) => c.status !== "Ferdig" && c.status !== "Henlagt");
+    const åpne      = cases.filter((c) => c.status !== "Avsluttet" && c.status !== "Henlagt");
     const aktive    = cases.filter((c) => ACTIVE_STATUSES.includes(c.status));
-    const ferdig    = cases.filter((c) => c.status === "Ferdig");
+    const ferdig    = cases.filter((c) => c.status === "Avsluttet");
     const overFrist = åpne.filter((c) => c.ageDays > FRIST_DAGER);
     const uTildelt  = åpne.filter((c) => c.employeeId === null);
     const iBero     = cases.filter(
-      (c) => c.status === "Venter på bruker"
-          || c.status === "Venter på forvaltning"
+      (c) => c.status === "Venter på forvaltning"
           || c.status === "Venter på politi",
     );
     const eldst = åpne.reduce<CaseRow | null>(
@@ -391,7 +390,7 @@ export default function LederDashboard2() {
               <strong>{nk.overFrist} saker er over {FRIST_DAGER}-dagersfristen.</strong>{" "}
               <button
                 className="font-medium underline underline-offset-2 hover:no-underline"
-                onClick={() => tilSaksoversikt({ status: "Under behandling" })}
+                onClick={() => tilSaksoversikt({ status: "Utredes" })}
               >
                 Se aktive saker
               </button>
@@ -433,7 +432,7 @@ export default function LederDashboard2() {
             verdi={nk.aktive}
             ikon={<HourglassIcon aria-hidden fontSize="1.1rem" />}
             hint={`${Math.round((nk.aktive / Math.max(nk.totalt, 1)) * 100)}% av portefølje`}
-            onClick={() => tilSaksoversikt({ status: "Under behandling" })}
+            onClick={() => tilSaksoversikt({ status: "Utredes" })}
           />
           <Nk
             tittel="Ferdigstilte"
@@ -441,7 +440,7 @@ export default function LederDashboard2() {
             tone="suksess"
             ikon={<CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />}
             hint={nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined}
-            onClick={() => tilSaksoversikt({ status: "Ferdig" })}
+            onClick={() => tilSaksoversikt({ status: "Avsluttet" })}
           />
           <Nk
             tittel="Over frist"
@@ -449,7 +448,7 @@ export default function LederDashboard2() {
             tone={nk.overFrist > 0 ? "feil" : "suksess"}
             ikon={<XMarkOctagonIcon aria-hidden fontSize="1.1rem" />}
             hint={`>${FRIST_DAGER} dager åpen`}
-            onClick={() => tilSaksoversikt({ status: "Under behandling" })}
+            onClick={() => tilSaksoversikt({ status: "Utredes" })}
           />
           <Nk
             tittel="Ikke tildelt"
@@ -466,7 +465,7 @@ export default function LederDashboard2() {
             tone={nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default"}
             ikon={<ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />}
             hint={nk.eldst ? nk.eldst.id : "Ingen åpne saker"}
-            onClick={nk.eldst ? () => tilSaksoversikt({ status: "Under behandling" }) : undefined}
+            onClick={nk.eldst ? () => tilSaksoversikt({ status: "Utredes" }) : undefined}
           />
         </HGrid>
       </section>

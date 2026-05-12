@@ -18,6 +18,7 @@ import {
   HourglassIcon,
   PersonCrossIcon,
   PersonGroupIcon,
+  PlusIcon,
   XMarkOctagonIcon,
 } from "@navikt/aksel-icons";
 import {
@@ -68,13 +69,13 @@ const FRIST_DAGER = 30;
 const KAPASITET_MAKS = 20;
 
 const STATUS_FARGE: Record<CaseStatus, string> = {
-  "Ny":                    "hsl(211 100% 39%)",
-  "Under behandling":      "hsl(211 100% 60%)",
-  "Venter på bruker":      "hsl(35 100% 47%)",
-  "Venter på forvaltning": "hsl(28 90% 55%)",
-  "Venter på politi":      "hsl(280 50% 55%)",
-  "Henlagt":               "hsl(213 67% 30%)",
-  "Ferdig":                "hsl(145 63% 28%)",
+  "Ny":                       "hsl(211 100% 39%)",
+  "Utredes":                  "hsl(211 100% 60%)",
+  "Strafferettslig vurdering":"hsl(280 50% 55%)",
+  "Venter på forvaltning":    "hsl(28 90% 55%)",
+  "Venter på politi":         "hsl(35 100% 47%)",
+  "Henlagt":                  "hsl(213 67% 30%)",
+  "Avsluttet":                "hsl(145 63% 28%)",
 };
 
 const KATEGORI_FARGER = [
@@ -494,24 +495,31 @@ export default function LederDashboard3() {
 
   // ── Nøkkeltall ──
   const nk = useMemo(() => {
-    const åpne      = cases.filter((c) => c.status !== "Ferdig" && c.status !== "Henlagt");
-    const aktive    = cases.filter((c) => ACTIVE_STATUSES.includes(c.status));
-    const ferdig    = cases.filter((c) => c.status === "Ferdig");
+    const åpne      = cases.filter((c) => c.status !== "Avsluttet" && c.status !== "Henlagt");
+    const aktive    = cases.filter((c) => c.status === "Utredes" || c.status === "Strafferettslig vurdering");
+    const avsluttet = cases.filter((c) => c.status === "Avsluttet");
     const overFrist = åpne.filter((c) => c.ageDays > FRIST_DAGER);
     const uTildelt  = åpne.filter((c) => c.employeeId === null);
+    const venter    = cases.filter((c) => c.status === "Venter på forvaltning" || c.status === "Venter på politi");
     const eldst = åpne.reduce<CaseRow | null>((p, c) => (!p || c.ageDays > p.ageDays ? c : p), null);
-    const ferdigeDager = ferdig.map((c) => c.ageDays);
-    const snitt = ferdigeDager.length
-      ? Math.round(ferdigeDager.reduce((a, b) => a + b, 0) / ferdigeDager.length) : 0;
-    const median = medianAv(ferdigeDager);
-    const minD   = ferdigeDager.length ? Math.min(...ferdigeDager) : 0;
-    const maksD  = ferdigeDager.length ? Math.max(...ferdigeDager) : 0;
+    const avsluttetDager = avsluttet.map((c) => c.ageDays);
+    const snitt = avsluttetDager.length
+      ? Math.round(avsluttetDager.reduce((a, b) => a + b, 0) / avsluttetDager.length) : 0;
+    const median = medianAv(avsluttetDager);
+    const minD   = avsluttetDager.length ? Math.min(...avsluttetDager) : 0;
+    const maksD  = avsluttetDager.length ? Math.max(...avsluttetDager) : 0;
     return {
-      totalt: cases.length, aktive: aktive.length, ferdig: ferdig.length,
-      overFrist: overFrist.length, uTildelt: uTildelt.length,
-      iBero: cases.filter((c) => c.status.startsWith("Venter")).length,
+      totalt: cases.length,
+      ny: cases.filter((c) => c.status === "Ny").length,
+      aktive: aktive.length,
+      avsluttet: avsluttet.length,
+      venter: venter.length,
+      overFrist: overFrist.length,
+      uTildelt: uTildelt.length,
+      ferdig: avsluttet.length,
+      iBero: venter.length,
       eldst,
-      beh: { snitt, median, min: minD, maks: maksD, antall: ferdig.length },
+      beh: { snitt, median, min: minD, maks: maksD, antall: avsluttet.length },
     };
   }, [cases]);
 
@@ -534,8 +542,8 @@ export default function LederDashboard3() {
     return liste.map((emp) => {
       const egne      = cases.filter((c) => c.employeeId === emp.id);
       const aktive    = egne.filter((c) => ACTIVE_STATUSES.includes(c.status));
-      const ferdig    = egne.filter((c) => c.status === "Ferdig");
-      const overFrist = egne.filter((c) => c.ageDays > FRIST_DAGER && c.status !== "Ferdig");
+      const ferdig    = egne.filter((c) => c.status === "Avsluttet");
+      const overFrist = egne.filter((c) => c.ageDays > FRIST_DAGER && c.status !== "Avsluttet");
       return { id: emp.id, navn: emp.name, enhet: emp.unit,
                tildelte: egne.length, aktive: aktive.length,
                ferdig: ferdig.length, overFrist: overFrist.length };
@@ -582,7 +590,7 @@ export default function LederDashboard3() {
             <Alert variant="error" size="small">
               <strong>{nk.overFrist} saker er over {FRIST_DAGER}-dagersfristen.</strong>{" "}
               <button className="font-medium underline underline-offset-2 hover:no-underline"
-                onClick={() => tilSaksoversikt({ status: "Under behandling" })}>
+                onClick={() => tilSaksoversikt({ status: "Utredes" })}>
                 Se aktive saker
               </button>
             </Alert>
@@ -608,14 +616,15 @@ export default function LederDashboard3() {
 
         {visning === "klassisk" ? (
           /* Visning A: KPI-kort */
-          <HGrid columns={{ xs: 2, sm: 3, lg: 6 }} gap="3">
+          <HGrid columns={{ xs: 2, sm: 3, lg: 7 }} gap="3">
             {[
-              { tittel: "Totalt",       verdi: nk.totalt,    tone: "default",  ikon: <BarChartIcon aria-hidden fontSize="1.1rem" />,       param: {} },
-              { tittel: "Aktive",       verdi: nk.aktive,    tone: "default",  ikon: <HourglassIcon aria-hidden fontSize="1.1rem" />,       param: { status: "Under behandling" }, hint: `${Math.round((nk.aktive / Math.max(nk.totalt,1))*100)}%` },
-              { tittel: "Ferdigstilte", verdi: nk.ferdig,    tone: "suksess",  ikon: <CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Ferdig" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d` : undefined },
-              { tittel: "Over frist",   verdi: nk.overFrist, tone: nk.overFrist > 0 ? "feil" : "suksess", ikon: <XMarkOctagonIcon aria-hidden fontSize="1.1rem" />, param: { status: "Under behandling" }, hint: `>${FRIST_DAGER} dager` },
-              { tittel: "Ikke tildelt", verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", ikon: <PersonCrossIcon aria-hidden fontSize="1.1rem" />, param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
-              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", ikon: <ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Under behandling" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
+              { tittel: "Totalt",                   verdi: nk.totalt,     tone: "default",  ikon: <BarChartIcon aria-hidden fontSize="1.1rem" />,          param: {} },
+              { tittel: "Opprettede",               verdi: nk.ny,         tone: "default",  ikon: <PlusIcon aria-hidden fontSize="1.1rem" />,               param: { status: "Ny" } },
+              { tittel: "Aktive",                   verdi: nk.aktive,     tone: "default",  ikon: <HourglassIcon aria-hidden fontSize="1.1rem" />,          param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
+              { tittel: "Avsluttet",                verdi: nk.avsluttet,  tone: "suksess",  ikon: <CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />,    param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d` : undefined },
+              { tittel: "Venter på andre",          verdi: nk.venter,     tone: "advarsel", ikon: <ClockDashedIcon aria-hidden fontSize="1.1rem" />,          param: { status: "Venter på forvaltning" }, hint: "Forvaltning + politi" },
+              { tittel: "Ikke tildelt",             verdi: nk.uTildelt,   tone: nk.uTildelt > 0 ? "advarsel" : "suksess", ikon: <PersonCrossIcon aria-hidden fontSize="1.1rem" />, param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
+              { tittel: "Eldste åpne sak",          verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", ikon: <ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Utredes" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
             ].map((k) => (
               <NkKort key={k.tittel} tittel={k.tittel} verdi={k.verdi} enhet={(k as any).enhet} tone={k.tone as any}
                 ikon={k.ikon} hint={k.hint} onClick={() => tilSaksoversikt(k.param)} />
@@ -626,12 +635,13 @@ export default function LederDashboard3() {
           <StatStrip
             onKlikk={tilSaksoversikt}
             stats={[
-              { tittel: "Totalt",       verdi: nk.totalt,    tone: "default",  param: {} },
-              { tittel: "Aktive",       verdi: nk.aktive,    tone: "default",  param: { status: "Under behandling" }, hint: `${Math.round((nk.aktive / Math.max(nk.totalt,1))*100)}% av portefølje` },
-              { tittel: "Ferdigstilte", verdi: nk.ferdig,    tone: "suksess",  param: { status: "Ferdig" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined },
-              { tittel: "Over frist",   verdi: nk.overFrist, tone: nk.overFrist > 0 ? "feil" : "suksess", param: { status: "Under behandling" }, hint: `>${FRIST_DAGER} dager åpen` },
-              { tittel: "Ikke tildelt", verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
-              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", param: { status: "Under behandling" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
+              { tittel: "Totalt",          verdi: nk.totalt,    tone: "default",  param: {} },
+              { tittel: "Opprettede",      verdi: nk.ny,        tone: "default",  param: { status: "Ny" } },
+              { tittel: "Aktive",          verdi: nk.aktive,    tone: "default",  param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
+              { tittel: "Avsluttet",       verdi: nk.avsluttet, tone: "suksess",  param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined },
+              { tittel: "Venter på andre", verdi: nk.venter,    tone: "advarsel", param: { status: "Venter på forvaltning" }, hint: "Forvaltning + politi" },
+              { tittel: "Ikke tildelt",    verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
+              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", param: { status: "Utredes" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
             ]}
           />
         )}

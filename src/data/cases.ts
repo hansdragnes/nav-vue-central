@@ -3,21 +3,21 @@
 
 export type CaseStatus =
   | "Ny"
-  | "Under behandling"
-  | "Venter på bruker"
+  | "Utredes"
+  | "Strafferettslig vurdering"
   | "Venter på forvaltning"
   | "Venter på politi"
   | "Henlagt"
-  | "Ferdig";
+  | "Avsluttet";
 
 export const CASE_STATUSES: CaseStatus[] = [
   "Ny",
-  "Under behandling",
-  "Venter på bruker",
+  "Utredes",
+  "Strafferettslig vurdering",
   "Venter på forvaltning",
   "Venter på politi",
   "Henlagt",
-  "Ferdig",
+  "Avsluttet",
 ];
 
 export type CaseCategory =
@@ -85,12 +85,12 @@ function generateCases(): CaseRow[] {
     const statusRoll = rng();
     let status: CaseStatus;
     if (statusRoll < 0.12) status = "Ny";
-    else if (statusRoll < 0.45) status = "Under behandling";
-    else if (statusRoll < 0.55) status = "Venter på bruker";
-    else if (statusRoll < 0.65) status = "Venter på forvaltning";
-    else if (statusRoll < 0.72) status = "Venter på politi";
-    else if (statusRoll < 0.8) status = "Henlagt";
-    else status = "Ferdig";
+    else if (statusRoll < 0.32) status = "Utredes";
+    else if (statusRoll < 0.45) status = "Strafferettslig vurdering";
+    else if (statusRoll < 0.58) status = "Venter på forvaltning";
+    else if (statusRoll < 0.65) status = "Venter på politi";
+    else if (statusRoll < 0.72) status = "Henlagt";
+    else status = "Avsluttet";
 
     // Ny + ~10 % øvrige er ikke tildelt
     const unassigned = status === "Ny" || rng() < 0.05;
@@ -122,8 +122,8 @@ export function employeeName(id: string | null): string {
 
 export const ACTIVE_STATUSES: CaseStatus[] = [
   "Ny",
-  "Under behandling",
-  "Venter på bruker",
+  "Utredes",
+  "Strafferettslig vurdering",
   "Venter på forvaltning",
   "Venter på politi",
   "Henlagt",
