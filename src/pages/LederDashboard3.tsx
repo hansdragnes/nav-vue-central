@@ -33,8 +33,6 @@ import {
 import {
   Bar,
   BarChart,
-  Bubble,
-  BubbleChart,
   CartesianGrid,
   Cell,
   LabelList,
@@ -48,6 +46,7 @@ import {
   XAxis,
   YAxis,
   ZAxis,
+  Legend,
 } from "recharts";
 import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";import { Panel } from "@/components/aksel/Panel";
 import { cn } from "@/lib/utils";
@@ -105,6 +104,66 @@ function medianAv(tall: number[]): number {
 
 function saksoversiktUrl(params: Record<string, string>): string {
   return `/saksoversikt?${new URLSearchParams(params)}`;
+}
+
+// ─── Kombinert panel: stacked bar + kakediagram ───────────────────────────────
+
+/**
+ * Stacked horisontalt søylediagram: én rad per sakstype, segmentert per status.
+ * Gir lederen innsyn i hvilke sakstyper som hoper seg opp i hvilken status.
+ */
+function StackedStatusKategori({
+  cases, onKlikk,
+}: {
+  cases: { category: string; status: string }[];
+  onKlikk: (params: Record<string, string>) => void;
+}) {
+  const data = useMemo(() => {
+    return CASE_CATEGORIES.map((cat) => {
+      const rad: Record<string, string | number> = { navn: cat };
+      CASE_STATUSES.forEach((s) => {
+        rad[s] = cases.filter((c) => c.category === cat && c.status === s).length;
+      });
+      return rad;
+    }).sort((a, b) => {
+      const sumA = CASE_STATUSES.reduce((s, k) => s + (a[k] as number), 0);
+      const sumB = CASE_STATUSES.reduce((s, k) => s + (b[k] as number), 0);
+      return sumB - sumA;
+    });
+  }, [cases]);
+
+  const høyde = Math.max(200, CASE_CATEGORIES.length * 44 + 40);
+
+  return (
+    <div role="img" aria-label="Saker per sakstype fordelt på status">
+      <ResponsiveContainer width="100%" height={høyde}>
+        <BarChart
+          layout="vertical" data={data}
+          margin={{ left: 0, right: 16, top: 4, bottom: 4 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+          <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} stroke="hsl(var(--border))" allowDecimals={false} />
+          <YAxis type="category" dataKey="navn" width={120} tick={{ fontSize: 12, fill: "hsl(var(--foreground))" }} stroke="hsl(var(--border))" />
+          <RechartsTooltip
+            cursor={{ fill: "hsl(var(--surface-subtle))" }}
+            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
+            formatter={(v: number, name: string) => [`${v} saker`, name]}
+          />
+          {CASE_STATUSES.map((s) => (
+            <Bar
+              key={s} dataKey={s} stackId="a"
+              fill={STATUS_FARGE[s as CaseStatus]}
+              isAnimationActive={false}
+              barSize={22}
+              style={{ cursor: "pointer" }}
+              onClick={(entry) => onKlikk({ kategori: entry.navn as string, status: s })}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-1 text-xs text-muted-foreground text-center">Klikk et segment for å åpne filtrert saksoversikt</p>
+    </div>
+  );
 }
 
 // ─── Visning A: klassiske komponenter ────────────────────────────────────────
@@ -697,31 +756,99 @@ export default function LederDashboard3() {
         </div>
       </Panel>
 
-      {/* ── Statusfordeling ── */}
+      {/* ── Fordeling: stacked status×kategori + kakediagram ── */}
       <Panel
-        title="Statusfordeling"
+        title="Saksfordeling"
         description={visning === "klassisk"
-          ? "Klikk en søyle for å åpne filtrert saksoversikt"
-          : "Treemap – areal viser relativ saksmengde · Klikk for å filtrere"}
+          ? "Klikk et segment for å åpne filtrert saksoversikt"
+          : "Treemap og bubble chart – klikk for å filtrere"}
       >
         {visning === "klassisk" ? (
-          <Soylediagram
-            data={statusData}
-            ariaLabel={`Statusfordeling: ${statusData.map((s) => `${s.navn} ${s.antall}`).join(", ")}`}
-            onBarClick={(navn) => tilSaksoversikt({ status: navn })}
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+
+            {/* Venstre: stacked bar – sakstype × status */}
+            <div className="xl:col-span-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sakstype fordelt på status
+              </p>
+              <StackedStatusKategori cases={cases} onKlikk={tilSaksoversikt} />
+              {/* Status-legende */}
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                {CASE_STATUSES.map((s) => (
+                  <li key={s} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: STATUS_FARGE[s] }} />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Høyre: kakediagram – sakstype-andeler */}
+            <div className="xl:col-span-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Andel per sakstype
+              </p>
+              <div className="h-52 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={kategoriData} dataKey="antall" nameKey="navn"
+                      isAnimationActive={false} cx="50%" cy="50%"
+                      outerRadius={88} innerRadius={0} paddingAngle={1}
+                      stroke="hsl(var(--card))" strokeWidth={2}
+                      onClick={(entry) => tilSaksoversikt({ kategori: entry.navn })}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {kategoriData.map((d, i) => <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i]} />)}
+                    </Pie>
+                    <RechartsTooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
+                      formatter={(v: number, n: string) => [`${v} saker`, n]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="mt-3 space-y-1">
+                {kategoriData.map((d, i) => {
+                  const total = kategoriData.reduce((s, k) => s + k.antall, 0);
+                  const pct = total > 0 ? Math.round((d.antall / total) * 100) : 0;
+                  return (
+                    <li key={d.navn}>
+                      <button onClick={() => tilSaksoversikt({ kategori: d.navn })}
+                        className="flex w-full items-center justify-between gap-2 text-xs rounded-sm px-1 py-0.5 hover:bg-surface-subtle">
+                        <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                          <span className="shrink-0 h-2 w-2 rounded-full" style={{ background: d.farge ?? KATEGORI_FARGER[i] }} />
+                          <span className="truncate">{d.navn}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums font-semibold text-foreground">
+                          {d.antall} <span className="font-normal text-muted-foreground">({pct}%)</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
         ) : (
-          <StatusTreemap
-            data={statusData}
-            onKlikk={(navn) => tilSaksoversikt({ status: navn })}
-          />
+          /* Visning B: treemap + bubble chart side ved side */
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Statusfordeling</p>
+              <StatusTreemap data={statusData} onKlikk={(navn) => tilSaksoversikt({ status: navn })} />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fordeling per sakstype</p>
+              <KategoriBubbleChart data={kategoriData} onKlikk={(navn) => tilSaksoversikt({ kategori: navn })} />
+            </div>
+          </div>
         )}
 
-        {/* Venteflaskehalser under – felles begge visninger */}
+        {/* Venteflaskehalser – felles begge visninger */}
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4">
           {[
-            { label: "Ikke tildelt",      verdi: nk.uTildelt, tone: "feil",     params: { ansatt: "ikke-tildelt" } },
-            { label: "Venter forvaltning", verdi: cases.filter((c) => c.status === "Venter på forvaltning").length, tone: "advarsel", params: { status: "Venter på forvaltning" } },
+            { label: "Ikke tildelt",       verdi: nk.uTildelt,               tone: "feil",     params: { ansatt: "ikke-tildelt" } },
+            { label: "Venter forvaltning", verdi: nk.venterForvaltning,       tone: "advarsel", params: { status: "Venter på forvaltning" } },
             { label: "Venter politi",      verdi: cases.filter((c) => c.status === "Venter på politi").length, tone: "default", params: { status: "Venter på politi" } },
           ].map((f) => (
             <button key={f.label} onClick={() => tilSaksoversikt(f.params)}
@@ -734,8 +861,6 @@ export default function LederDashboard3() {
           ))}
         </div>
       </Panel>
-
-      {/* ── Kapasitetsoversikt ── */}
       <Panel
         title="Kapasitetsoversikt"
         description={visning === "klassisk"
@@ -805,74 +930,6 @@ export default function LederDashboard3() {
         )}
       </Panel>
 
-      {/* ── Kategorifordeling ── */}
-      <Panel
-        title="Fordeling per sakstype"
-        description={visning === "klassisk"
-          ? "Klikk en søyle eller sektor for å åpne filtrert saksoversikt"
-          : "Bubble chart – boble-størrelse viser saksmengde · Klikk for å filtrere"}
-      >
-        {visning === "klassisk" ? (
-          /* Visning A: Søyler + donut */
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-            <div className="xl:col-span-3">
-              <Soylediagram
-                data={kategoriData}
-                ariaLabel={`Saker per kategori: ${kategoriData.map((k) => `${k.navn} ${k.antall}`).join(", ")}`}
-                onBarClick={(navn) => tilSaksoversikt({ kategori: navn })}
-              />
-            </div>
-            <div className="xl:col-span-2">
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={kategoriData} dataKey="antall" nameKey="navn"
-                      isAnimationActive={false} cx="50%" cy="50%"
-                      outerRadius={75} innerRadius={32} paddingAngle={2}
-                      stroke="hsl(var(--card))" strokeWidth={2}
-                      onClick={(entry) => tilSaksoversikt({ kategori: entry.navn })}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {kategoriData.map((d, i) => <Cell key={d.navn} fill={d.farge ?? KATEGORI_FARGER[i]} />)}
-                    </Pie>
-                    <RechartsTooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
-                      formatter={(v: number, n: string) => [`${v} saker`, n]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <ul className="mt-3 space-y-1.5">
-                {kategoriData.map((d, i) => {
-                  const total = kategoriData.reduce((s, k) => s + k.antall, 0);
-                  const pct   = total > 0 ? Math.round((d.antall / total) * 100) : 0;
-                  return (
-                    <li key={d.navn}>
-                      <button onClick={() => tilSaksoversikt({ kategori: d.navn })}
-                        className="flex w-full items-center justify-between gap-2 text-xs rounded-sm px-1 py-0.5 hover:bg-surface-subtle">
-                        <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                          <span className="shrink-0 h-2 w-2 rounded-full" style={{ background: d.farge ?? KATEGORI_FARGER[i] }} />
-                          <span className="truncate">{d.navn}</span>
-                        </span>
-                        <span className="shrink-0 tabular-nums font-semibold text-foreground">
-                          {d.antall} <span className="font-normal text-muted-foreground">({pct}%)</span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        ) : (
-          /* Visning B: Bubble chart */
-          <KategoriBubbleChart
-            data={kategoriData}
-            onKlikk={(navn) => tilSaksoversikt({ kategori: navn })}
-          />
-        )}
-      </Panel>
     </div>
   );
 }
