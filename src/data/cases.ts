@@ -54,7 +54,23 @@ export interface CaseRow {
   ageDays: number;
   createdAt: string; // ISO-dato, f.eks. "2024-03-15"
   employeeId: string | null; // null = ikke tildelt
+  belop: number | null; // Beløp stanset (kr), null hvis ikke relevant
 }
+
+// Økonomiske nøkkeltall for dashboardet (månedlig mock)
+export interface OkonomiskNokkel {
+  hoyesteBelopStanset: number;    // Høyeste enkeltbeløp stanset siste måned (kr)
+  totaltStanset: number;          // Totalt stanset (kr)
+  totaltInnsparing: number;       // Innsparte beløp (kr)
+  totaltTilbakekreving: number;   // Tilbakekrevd (kr)
+}
+
+export const OKONOMISK: OkonomiskNokkel = {
+  hoyesteBelopStanset:   1_840_000,
+  totaltStanset:        12_350_000,
+  totaltInnsparing:      4_720_000,
+  totaltTilbakekreving:  2_180_000,
+};
 
 export const EMPLOYEES: Employee[] = [
   { id: "e1", name: "Per Hansen", unit: "Kontroll Øst" },
@@ -101,6 +117,10 @@ function generateCases(): CaseRow[] {
     const ref = new Date("2024-12-01");
     ref.setDate(ref.getDate() - ageDays);
     const createdAt = ref.toISOString().slice(0, 10);
+    // Beløp: kun avsluttede og henlagte saker har beløp (50 % sjanse), resten null
+    const harBelop = (status === "Avsluttet" || status === "Henlagt") && rng() > 0.5;
+    const belop = harBelop ? Math.round(rng() * 1_900_000 + 50_000) : null;
+
     rows.push({
       id: `K-2024-${(10000 + i).toString()}`,
       category: cat,
@@ -108,6 +128,7 @@ function generateCases(): CaseRow[] {
       ageDays,
       createdAt,
       employeeId,
+      belop,
     });
   }
   return rows;

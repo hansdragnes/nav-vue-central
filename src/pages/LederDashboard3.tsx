@@ -14,12 +14,11 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ClockDashedIcon,
-  ExclamationmarkTriangleIcon,
+  InformationSquareIcon,
   HourglassIcon,
   PersonCrossIcon,
   PersonGroupIcon,
   PlusIcon,
-  XMarkOctagonIcon,
 } from "@navikt/aksel-icons";
 import {
   Alert,
@@ -50,8 +49,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
-import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";
-import { Panel } from "@/components/aksel/Panel";
+import { ScopeBar, type Period, type Scope } from "@/components/aksel/ScopeBar";import { Panel } from "@/components/aksel/Panel";
 import { cn } from "@/lib/utils";
 import {
   ACTIVE_STATUSES,
@@ -59,7 +57,7 @@ import {
   CASE_STATUSES,
   CASES,
   EMPLOYEES,
-  type CaseRow,
+  OKONOMISK,
   type CaseStatus,
 } from "@/data/cases";
 
@@ -475,6 +473,10 @@ export default function LederDashboard3() {
   const [visning, setVisning] = useState<Visning>("klassisk");
   const [visAnsatte, setVisAnsatte] = useState(true);
 
+  // Datovelger (egendefinert periode)
+  const [fraDato, setFraDato] = useState<string>("");
+  const [tilDato, setTilDato] = useState<string>("");
+
   const tilSaksoversikt = (params: Record<string, string>) =>
     navigate(saksoversiktUrl(params));
 
@@ -489,36 +491,62 @@ export default function LederDashboard3() {
 
   const cases = useMemo(() => {
     if (period === "Ingen") return scopedCases;
-    const cutoff = period === "Måned hittil" ? 25 : period === "Inneværende tertial" ? 90 : 200;
-    return scopedCases.filter((c) => c.ageDays <= cutoff);
-  }, [scopedCases, period]);
+    if (period === "Måned hittil") return scopedCases.filter((c) => c.ageDays <= 30);
+    if (period === "År hittil")    return scopedCases.filter((c) => c.ageDays <= 365);
+    if (period === "Inneværende tertial") return scopedCases.filter((c) => c.ageDays <= 122);
+    if (period === "Egendefinert") {
+      return scopedCases.filter((c) => {
+        const cDate = c.createdAt;
+        if (fraDato && cDate < fraDato) return false;
+        if (tilDato && cDate > tilDato) return false;
+        return true;
+      });
+    }
+    return scopedCases;
+  }, [scopedCases, period, fraDato, tilDato]);
 
   // ── Nøkkeltall ──
   const nk = useMemo(() => {
     const åpne      = cases.filter((c) => c.status !== "Avsluttet" && c.status !== "Henlagt");
     const aktive    = cases.filter((c) => c.status === "Utredes" || c.status === "Strafferettslig vurdering");
     const avsluttet = cases.filter((c) => c.status === "Avsluttet");
+    const henlagt   = cases.filter((c) => c.status === "Henlagt");
     const overFrist = åpne.filter((c) => c.ageDays > FRIST_DAGER);
     const uTildelt  = åpne.filter((c) => c.employeeId === null);
-    const venter    = cases.filter((c) => c.status === "Venter på forvaltning" || c.status === "Venter på politi");
-    const eldst = åpne.reduce<CaseRow | null>((p, c) => (!p || c.ageDays > p.ageDays ? c : p), null);
+    const venterForvaltning = cases.filter((c) => c.status === "Venter på forvaltning");
+    const venterPoliti      = cases.filter((c) => c.status === "Venter på politi");
+    const venter = [...venterForvaltning, ...venterPoliti];
+
+    // Snitt-ventetid for "Venter på forvaltning"
+    const venterForvDager = venterForvaltning.map((c) => c.ageDays);
+    const venterForvSnitt = venterForvDager.length
+      ? Math.round(venterForvDager.reduce((a, b) => a + b, 0) / venterForvDager.length) : 0;
+
     const avsluttetDager = avsluttet.map((c) => c.ageDays);
     const snitt = avsluttetDager.length
       ? Math.round(avsluttetDager.reduce((a, b) => a + b, 0) / avsluttetDager.length) : 0;
     const median = medianAv(avsluttetDager);
     const minD   = avsluttetDager.length ? Math.min(...avsluttetDager) : 0;
     const maksD  = avsluttetDager.length ? Math.max(...avsluttetDager) : 0;
+
+    // Henleggelsesandel av avsluttede + henlagte
+    const lukket = avsluttet.length + henlagt.length;
+    const henlagtPst = lukket > 0 ? Math.round((henlagt.length / lukket) * 100) : 0;
+
     return {
       totalt: cases.length,
-      ny: cases.filter((c) => c.status === "Ny").length,
+      innkomne: cases.filter((c) => c.status === "Ny").length,
       aktive: aktive.length,
       avsluttet: avsluttet.length,
+      henlagt: henlagt.length,
+      henlagtPst,
       venter: venter.length,
+      venterForvaltning: venterForvaltning.length,
+      venterForvSnitt,
       overFrist: overFrist.length,
       uTildelt: uTildelt.length,
       ferdig: avsluttet.length,
       iBero: venter.length,
-      eldst,
       beh: { snitt, median, min: minD, maks: maksD, antall: avsluttet.length },
     };
   }, [cases]);
@@ -557,7 +585,12 @@ export default function LederDashboard3() {
 
       {/* ── Kontrollrad: scope/periode + visnings-toggle ── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <ScopeBar scope={scope} onScopeChange={setScope} period={period} onPeriodChange={setPeriod} />
+        <ScopeBar
+            scope={scope} onScopeChange={setScope}
+            period={period} onPeriodChange={setPeriod}
+            fraDato={fraDato} tilDato={tilDato}
+            onFraDatoChange={setFraDato} onTilDatoChange={setTilDato}
+          />
         <div className="flex flex-col items-end gap-1 shrink-0">
           <BodyShort size="small" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Visualiseringstype
@@ -587,7 +620,7 @@ export default function LederDashboard3() {
       {harAlerts && (
         <section aria-label="Varsler" className="space-y-2">
           {nk.overFrist > 0 && (
-            <Alert variant="error" size="small">
+            <Alert variant="info" size="small">
               <strong>{nk.overFrist} saker er over {FRIST_DAGER}-dagersfristen.</strong>{" "}
               <button className="font-medium underline underline-offset-2 hover:no-underline"
                 onClick={() => tilSaksoversikt({ status: "Utredes" })}>
@@ -616,17 +649,16 @@ export default function LederDashboard3() {
 
         {visning === "klassisk" ? (
           /* Visning A: KPI-kort */
-          <HGrid columns={{ xs: 2, sm: 3, lg: 7 }} gap="3">
+          <HGrid columns={{ xs: 2, sm: 3, lg: 6 }} gap="3">
             {[
-              { tittel: "Totalt",                   verdi: nk.totalt,     tone: "default",  ikon: <BarChartIcon aria-hidden fontSize="1.1rem" />,          param: {} },
-              { tittel: "Opprettede",               verdi: nk.ny,         tone: "default",  ikon: <PlusIcon aria-hidden fontSize="1.1rem" />,               param: { status: "Ny" } },
-              { tittel: "Aktive",                   verdi: nk.aktive,     tone: "default",  ikon: <HourglassIcon aria-hidden fontSize="1.1rem" />,          param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
-              { tittel: "Avsluttet",                verdi: nk.avsluttet,  tone: "suksess",  ikon: <CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />,    param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d` : undefined },
-              { tittel: "Venter på andre",          verdi: nk.venter,     tone: "advarsel", ikon: <ClockDashedIcon aria-hidden fontSize="1.1rem" />,          param: { status: "Venter på forvaltning" }, hint: "Forvaltning + politi" },
-              { tittel: "Ikke tildelt",             verdi: nk.uTildelt,   tone: nk.uTildelt > 0 ? "advarsel" : "suksess", ikon: <PersonCrossIcon aria-hidden fontSize="1.1rem" />, param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
-              { tittel: "Eldste åpne sak",          verdi: nk.eldst ? nk.eldst.ageDays : 0, enhet: "dager", tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", ikon: <ExclamationmarkTriangleIcon aria-hidden fontSize="1.1rem" />, param: { status: "Utredes" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
+              { tittel: "Totalt",        verdi: nk.totalt,     tone: "default",  ikon: <BarChartIcon aria-hidden fontSize="1.1rem" />,         param: {} },
+              { tittel: "Innkomne",      verdi: nk.innkomne,   tone: "default",  ikon: <PlusIcon aria-hidden fontSize="1.1rem" />,              param: { status: "Ny" } },
+              { tittel: "Aktive",        verdi: nk.aktive,     tone: "default",  ikon: <HourglassIcon aria-hidden fontSize="1.1rem" />,         param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
+              { tittel: "Avsluttet",     verdi: nk.avsluttet,  tone: "suksess",  ikon: <CheckmarkCircleIcon aria-hidden fontSize="1.1rem" />,   param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d · ${nk.henlagtPst}% henlagt` : undefined },
+              { tittel: "Venter på forvaltning", verdi: nk.venterForvaltning, tone: "advarsel", ikon: <ClockDashedIcon aria-hidden fontSize="1.1rem" />, param: { status: "Venter på forvaltning" }, hint: nk.venterForvSnitt > 0 ? `Snitt ${nk.venterForvSnitt} dager` : "Ingen" },
+              { tittel: "Ikke tildelt",  verdi: nk.uTildelt,   tone: nk.uTildelt > 0 ? "advarsel" : "suksess", ikon: <PersonCrossIcon aria-hidden fontSize="1.1rem" />, param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
             ].map((k) => (
-              <NkKort key={k.tittel} tittel={k.tittel} verdi={k.verdi} enhet={(k as any).enhet} tone={k.tone as any}
+              <NkKort key={k.tittel} tittel={k.tittel} verdi={k.verdi} tone={k.tone as any}
                 ikon={k.ikon} hint={k.hint} onClick={() => tilSaksoversikt(k.param)} />
             ))}
           </HGrid>
@@ -635,17 +667,35 @@ export default function LederDashboard3() {
           <StatStrip
             onKlikk={tilSaksoversikt}
             stats={[
-              { tittel: "Totalt",          verdi: nk.totalt,    tone: "default",  param: {} },
-              { tittel: "Opprettede",      verdi: nk.ny,        tone: "default",  param: { status: "Ny" } },
-              { tittel: "Aktive",          verdi: nk.aktive,    tone: "default",  param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
-              { tittel: "Avsluttet",       verdi: nk.avsluttet, tone: "suksess",  param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt} dager` : undefined },
-              { tittel: "Venter på andre", verdi: nk.venter,    tone: "advarsel", param: { status: "Venter på forvaltning" }, hint: "Forvaltning + politi" },
-              { tittel: "Ikke tildelt",    verdi: nk.uTildelt,  tone: nk.uTildelt > 0 ? "advarsel" : "suksess", param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
-              { tittel: "Eldste åpne sak", verdi: nk.eldst ? nk.eldst.ageDays : 0, tone: nk.eldst && nk.eldst.ageDays > FRIST_DAGER ? "feil" : "default", param: { status: "Utredes" }, hint: nk.eldst ? nk.eldst.id : "Ingen åpne saker" },
+              { tittel: "Totalt",               verdi: nk.totalt,            tone: "default",  param: {} },
+              { tittel: "Innkomne",             verdi: nk.innkomne,          tone: "default",  param: { status: "Ny" } },
+              { tittel: "Aktive",               verdi: nk.aktive,            tone: "default",  param: { status: "Utredes" }, hint: "Utredes + strafferettslig" },
+              { tittel: "Avsluttet",            verdi: nk.avsluttet,         tone: "suksess",  param: { status: "Avsluttet" }, hint: nk.beh.antall > 0 ? `Snitt ${nk.beh.snitt}d · ${nk.henlagtPst}% henlagt` : undefined },
+              { tittel: "Venter forvaltning",   verdi: nk.venterForvaltning, tone: "advarsel", param: { status: "Venter på forvaltning" }, hint: nk.venterForvSnitt > 0 ? `Snitt ${nk.venterForvSnitt} dager` : undefined },
+              { tittel: "Ikke tildelt",         verdi: nk.uTildelt,          tone: nk.uTildelt > 0 ? "advarsel" : "suksess", param: { ansatt: "ikke-tildelt" }, hint: "Krever tildeling" },
             ]}
           />
         )}
       </section>
+
+      {/* ── Økonomi ── */}
+      <Panel title="Økonomiske nøkkeltall" description="Forrige måned · Mock-tall for prototype">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { tittel: "Høyeste beløp stanset",  verdi: OKONOMISK.hoyesteBelopStanset,  farge: "text-destructive" },
+            { tittel: "Totalt stanset",          verdi: OKONOMISK.totaltStanset,         farge: "text-foreground" },
+            { tittel: "Innsparte beløp",         verdi: OKONOMISK.totaltInnsparing,      farge: "text-success" },
+            { tittel: "Tilbakekreving",          verdi: OKONOMISK.totaltTilbakekreving,  farge: "text-foreground" },
+          ].map((k) => (
+            <div key={k.tittel} className="rounded-sm border border-border bg-card p-4 shadow-sm">
+              <BodyShort size="small" className="font-medium text-muted-foreground leading-snug mb-2">{k.tittel}</BodyShort>
+              <span className={`text-2xl font-semibold tabular-nums ${k.farge}`}>
+                {k.verdi.toLocaleString("nb-NO")} kr
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
 
       {/* ── Statusfordeling ── */}
       <Panel
