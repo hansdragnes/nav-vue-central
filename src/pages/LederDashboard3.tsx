@@ -109,6 +109,58 @@ function saksoversiktUrl(params: Record<string, string>): string {
 // ─── Kombinert panel: stacked bar + kakediagram ───────────────────────────────
 
 /**
+ * Utredningstrakt: inspirert av sales funnel.
+ * Viser antall saker i hvert steg av utredningsprosessen.
+ * Bredden på hvert steg er proporsjonal med antall saker relativt til øverste steg.
+ * Klikk på et steg navigerer til filtrert saksoversikt.
+ */
+function Utredningstrakt({
+  steg, onKlikk,
+}: {
+  steg: { label: string; antall: number; farge: string; sublabel?: string; params: Record<string, string> }[];
+  onKlikk: (params: Record<string, string>) => void;
+}) {
+  const maks = Math.max(...steg.map((s) => s.antall), 1);
+  const MIN_BREDDE_PCT = 28; // Smaleste steg, slik at tekst er lesbar
+
+  return (
+    <div role="img" aria-label="Utredningstrakt" className="flex flex-col items-center gap-1 w-full select-none">
+      {steg.map((s, i) => {
+        const pct = MIN_BREDDE_PCT + ((s.antall / maks) * (100 - MIN_BREDDE_PCT));
+        const erSiste = i === steg.length - 1;
+        return (
+          <div key={s.label} className="w-full flex flex-col items-center">
+            <button
+              onClick={() => onKlikk(s.params)}
+              className="group relative flex flex-col items-center justify-center rounded-sm transition-opacity hover:opacity-80 cursor-pointer py-2.5"
+              style={{ width: `${pct}%`, background: s.farge, minHeight: 52 }}
+              title={`${s.label}: ${s.antall} saker`}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-white/80 leading-none">
+                {s.label}
+              </span>
+              <span className="text-2xl font-bold tabular-nums text-white leading-tight">
+                {s.antall}
+              </span>
+              {s.sublabel && (
+                <span className="text-[10px] text-white/70 leading-none mt-0.5">{s.sublabel}</span>
+              )}
+            </button>
+            {/* Pil ned mellom steg (ikke etter siste) */}
+            {!erSiste && (
+              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[8px] border-l-transparent border-r-transparent"
+                style={{ borderTopColor: s.farge, opacity: 0.5 }}
+              />
+            )}
+          </div>
+        );
+      })}
+      <p className="mt-3 text-xs text-muted-foreground text-center">Klikk et steg for å åpne filtrert saksoversikt</p>
+    </div>
+  );
+}
+
+/**
  * Stacked horisontalt søylediagram: én rad per sakstype, segmentert per status.
  * Gir lederen innsyn i hvilke sakstyper som hoper seg opp i hvilken status.
  */
@@ -637,6 +689,51 @@ export default function LederDashboard3() {
     }).sort((a, b) => b.overFrist - a.overFrist || b.aktive - a.aktive);
   }, [cases, scope]);
 
+  const traktSteg = useMemo(() => [
+    {
+      label: "Innkomne",
+      antall: cases.filter((c) => c.status === "Ny").length,
+      farge: "hsl(211 100% 39%)",
+      sublabel: "Ikke påstartet",
+      params: { status: "Ny" },
+    },
+    {
+      label: "Utredes",
+      antall: cases.filter((c) => c.status === "Utredes").length,
+      farge: "hsl(211 100% 52%)",
+      sublabel: "Under aktiv utredning",
+      params: { status: "Utredes" },
+    },
+    {
+      label: "Strafferettslig",
+      antall: cases.filter((c) => c.status === "Strafferettslig vurdering").length,
+      farge: "hsl(280 50% 52%)",
+      sublabel: "Strafferettslig vurdering",
+      params: { status: "Strafferettslig vurdering" },
+    },
+    {
+      label: "Venter",
+      antall: cases.filter((c) => c.status === "Venter på forvaltning" || c.status === "Venter på politi").length,
+      farge: "hsl(28 90% 52%)",
+      sublabel: "Forvaltning + politi",
+      params: { status: "Venter på forvaltning" },
+    },
+    {
+      label: "Avsluttet",
+      antall: cases.filter((c) => c.status === "Avsluttet").length,
+      farge: "hsl(145 63% 28%)",
+      sublabel: "Ferdigbehandlet",
+      params: { status: "Avsluttet" },
+    },
+    {
+      label: "Henlagt",
+      antall: cases.filter((c) => c.status === "Henlagt").length,
+      farge: "hsl(213 67% 30%)",
+      sublabel: "Uten videre tiltak",
+      params: { status: "Henlagt" },
+    },
+  ], [cases]);
+
   const harAlerts = nk.overFrist > 0 || nk.uTildelt > 0;
 
   return (
@@ -764,9 +861,9 @@ export default function LederDashboard3() {
           : "Treemap og bubble chart – klikk for å filtrere"}
       >
         {visning === "klassisk" ? (
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-7">
 
-            {/* Venstre: stacked bar – sakstype × status */}
+            {/* Kolonne 1 (3/7): stacked bar – sakstype × status */}
             <div className="xl:col-span-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Sakstype fordelt på status
@@ -783,7 +880,7 @@ export default function LederDashboard3() {
               </ul>
             </div>
 
-            {/* Høyre: kakediagram – sakstype-andeler */}
+            {/* Kolonne 2 (2/7): kakediagram – sakstype-andeler */}
             <div className="xl:col-span-2">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Andel per sakstype
@@ -829,6 +926,14 @@ export default function LederDashboard3() {
                 })}
               </ul>
             </div>
+
+            {/* Kolonne 3 (2/7): utredningstrakt */}
+            <div className="xl:col-span-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Utredningstrakt
+              </p>
+              <Utredningstrakt steg={traktSteg} onKlikk={tilSaksoversikt} />
+            </div>
           </div>
         ) : (
           /* Visning B: treemap + bubble chart side ved side */
@@ -862,7 +967,7 @@ export default function LederDashboard3() {
         </div>
       </Panel>
       <Panel
-        title="Kapasitetsoversikt"
+        title="Ansattoversikt"
         description={visning === "klassisk"
           ? "Klikk en rad for å åpne sakslisten til saksbehandleren"
           : "Heatmap – farge-intensitet viser relativ belastning · Klikk for å filtrere"}
@@ -886,7 +991,7 @@ export default function LederDashboard3() {
           <Table size="small">
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell>Saksbehandler</Table.HeaderCell>
+                <Table.HeaderCell>Ansatt</Table.HeaderCell>
                 <Table.HeaderCell>
                   <HStack gap="1" align="center">
                     Kapasitet <span className="text-xs font-normal text-muted-foreground">(aktive/{KAPASITET_MAKS})</span>
