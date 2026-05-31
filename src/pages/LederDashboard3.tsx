@@ -594,8 +594,7 @@ export default function LederDashboard3() {
   // ── Filtrering ──
   const scopedCases = useMemo(() => {
     if (scope === "Min enhet") {
-      const ids = EMPLOYEES.filter((e) => e.unit === "Kontroll Øst").map((e) => e.id);
-      return CASES.filter((c) => c.employeeId === null || ids.includes(c.employeeId));
+      return CASES.filter((c) => c.unit === "Kontroll Øst");
     }
     return CASES;
   }, [scope]);

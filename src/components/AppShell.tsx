@@ -3,12 +3,17 @@ import { BarChartIcon, FolderIcon, CogIcon, QuestionmarkCircleIcon } from "@navi
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", label: "Lederdashbord", icon: BarChartIcon, end: true },
+  { to: "/", label: "NAV Kontroll Total", icon: BarChartIcon, end: true },
+  { to: "/leder", label: "Lederdashbord", icon: BarChartIcon },
   { to: "/saksoversikt", label: "Saksoversikt", icon: FolderIcon },
 ];
 
 const titleMap: Record<string, { title: string; sub: string }> = {
   "/": {
+    title: "NAV Kontroll Total",
+    sub: "Aggregert oversikt for alle enheter",
+  },
+  "/leder": {
     title: "Lederdashbord",
     sub: "Utvidet visning med klassisk og alternativ fremstilling",
   },

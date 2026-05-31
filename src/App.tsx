@@ -22,6 +22,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
+import DirektorDashboard from "./pages/DirektorDashboard";
 import LederDashboard3 from "./pages/LederDashboard3";
 import Saksoversikt from "./pages/Saksoversikt";
 import NotFound from "./pages/NotFound.tsx";
@@ -37,7 +38,8 @@ const App = () => (
         <HashRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route path="/" element={<LederDashboard3 />} />
+            <Route path="/" element={<DirektorDashboard />} />
+            <Route path="/leder" element={<LederDashboard3 />} />
             <Route path="/saksoversikt" element={<Saksoversikt />} />
           </Route>
           <Route path="*" element={<NotFound />} />
