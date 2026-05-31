@@ -387,8 +387,8 @@ export default function DirektorDashboard() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Statusfordeling per enhet
             </p>
-            <div role="img" aria-label="Statusfordeling per enhet">
-              <ResponsiveContainer width="100%" height={320}>
+            <div role="img" aria-label="Statusfordeling per enhet" className="h-80 overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={statusPerEnhetData}
                   margin={{ left: 0, right: 8, top: 4, bottom: 60 }}
@@ -429,7 +429,7 @@ export default function DirektorDashboard() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Utredningstrakt — totalt
             </p>
-            <div className="flex flex-col items-center gap-1 w-full select-none">
+            <div className="flex flex-col items-center gap-1 w-full select-none overflow-hidden">
               {traktSteg.map((s, i) => {
                 const maks = traktSteg[0].antall || 1;
                 const pct = 28 + (s.antall / maks) * 72;
