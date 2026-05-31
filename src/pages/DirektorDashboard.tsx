@@ -38,6 +38,7 @@ import { PERIODS, type Period } from "@/components/aksel/ScopeBar";
 import { cn } from "@/lib/utils";
 import {
   CASES,
+  CASE_CATEGORIES,
   CASE_STATUSES,
   UNITS,
   OKONOMISK_PER_ENHET,
@@ -202,6 +203,83 @@ function TotalRad({ cases }: { cases: typeof CASES }) {
   );
 }
 
+// ─── Stacked sakstype × status ────────────────────────────────────────────────
+
+function StackedSakstypeStatus({
+  cases,
+  onKlikk,
+}: {
+  cases: { category: string; status: string }[];
+  onKlikk: (params: Record<string, string>) => void;
+}) {
+  const data = useMemo(() => {
+    return CASE_CATEGORIES.map((cat) => {
+      const rad: Record<string, string | number> = { navn: cat };
+      CASE_STATUSES.forEach((s) => {
+        rad[s] = cases.filter((c) => c.category === cat && c.status === s).length;
+      });
+      return rad;
+    }).sort((a, b) => {
+      const sumA = CASE_STATUSES.reduce((s, k) => s + (a[k] as number), 0);
+      const sumB = CASE_STATUSES.reduce((s, k) => s + (b[k] as number), 0);
+      return sumB - sumA;
+    });
+  }, [cases]);
+
+  const høyde = Math.max(200, CASE_CATEGORIES.length * 44 + 40);
+
+  return (
+    <div role="img" aria-label="Saker per sakstype fordelt på status">
+      <ResponsiveContainer width="100%" height={høyde}>
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ left: 0, right: 16, top: 4, bottom: 4 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+            stroke="hsl(var(--border))"
+            allowDecimals={false}
+          />
+          <YAxis
+            type="category"
+            dataKey="navn"
+            width={130}
+            tick={{ fontSize: 12, fill: "hsl(var(--foreground))" }}
+            stroke="hsl(var(--border))"
+          />
+          <RechartsTooltip
+            cursor={{ fill: "hsl(var(--surface-subtle))" }}
+            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 4, fontSize: 12 }}
+            formatter={(v: number, name: string) => [`${v} saker`, name]}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>}
+          />
+          {CASE_STATUSES.map((s) => (
+            <Bar
+              key={s}
+              dataKey={s}
+              stackId="a"
+              fill={STATUS_FARGE[s as CaseStatus]}
+              isAnimationActive={false}
+              barSize={22}
+              style={{ cursor: "pointer" }}
+              onClick={(entry) => onKlikk({ kategori: entry.navn as string, status: s })}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-1 text-xs text-muted-foreground text-center">
+        Klikk et segment for å åpne filtrert saksoversikt
+      </p>
+    </div>
+  );
+}
+
 // ─── Hoved-komponent ─────────────────────────────────────────────────────────
 
 export default function DirektorDashboard() {
@@ -305,7 +383,7 @@ export default function DirektorDashboard() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
           {/* Gruppert søyle: status per enhet */}
-          <div className="xl:col-span-2">
+          <div className="xl:col-span-2 min-w-0">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Statusfordeling per enhet
             </p>
@@ -347,7 +425,7 @@ export default function DirektorDashboard() {
           </div>
 
           {/* Utredningstrakt totalt */}
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Utredningstrakt — totalt
             </p>
@@ -375,6 +453,16 @@ export default function DirektorDashboard() {
             </div>
           </div>
         </div>
+      </Panel>
+
+      {/* ── Saksoversikt: sakstype × status ── */}
+      <Panel title="Saker per sakstype og status" description="Horisontalt stablet – klikk segment for filtrert saksoversikt">
+        <StackedSakstypeStatus cases={allCases} onKlikk={(params) => {
+          const sp = new URLSearchParams();
+          if (params.kategori) sp.set("kategori", params.kategori);
+          if (params.status)   sp.set("status",   params.status);
+          navigate(`/saksoversikt?${sp.toString()}`);
+        }} />
       </Panel>
 
       {/* ── Økonomi sammenstilling ── */}
